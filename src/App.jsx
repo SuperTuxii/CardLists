@@ -1,45 +1,42 @@
-import {useEffect, useState} from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import axios from "axios";
+import {RouterProvider, createBrowserRouter, Link} from 'react-router';
+import Home from "./Home.jsx";
+import AddPopup from "./AddPopup.jsx";
+import CardPopup from "./CardPopup.jsx";
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0);
+    let router = createBrowserRouter([
+        {
+            path: "/",
+            Component: Home,
+            children: [
+                {
+                    path: "add",
+                    Component: AddPopup
+                },
+                {
+                    path: "show/:id",
+                    Component: CardPopup
+                }
+            ]
+        },
+        {
+            path: "*",
+            Component: () => (
+                <>
+                    <nav>
+                        <Link to="/">Home</Link>
+                        <Link to="/add">Add Anime</Link>
+                    </nav>
+                    <h1>Not a site</h1>
+                </>
+            )
+        }
+    ]);
 
-  const fetchAPI = async () => {
-      const response = await axios.get("http://localhost:8080/api");
-      console.log(response.data.test);
-  };
-
-    useEffect(() => {
-        fetchAPI();
-    }, []);
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    return (
+        <RouterProvider router={router} />
+    );
 }
 
 export default App
