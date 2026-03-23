@@ -7,6 +7,60 @@ function AddPopup() {
     const [addUrl, setAddUrl] = useState("");
     const [relations, setRelations] = useState([]);
 
+    async function getAPI(url){
+        const response = await axios.get("http://localhost:8080/api/get", { params: { url: url }});
+        console.log(JSON.stringify(response.data, null, 2));
+        document.getElementById("animeInfo").style.display = "block";
+        document.getElementById("cover").src = response.data.cover;
+        document.querySelector("select#name").replaceChildren();
+        if (Array.isArray(response.data.name)) {
+            document.querySelector("h3#name").style.display = "none";
+            const select = document.querySelector("select#name");
+            select.style.display = "block";
+            response.data.name.forEach(name => {
+                const option = new Option(name, name);
+                select.add(option);
+            });
+        } else {
+            document.querySelector("h3#name").style.display = "block";
+            document.querySelector("select#name").style.display = "none";
+            document.querySelector("h3#name").innerText = response.data.name;
+        }
+        if (response.data.fromDB) {
+            document.getElementById("series").value = response.data.series;
+            document.getElementById("seriesPart").value = response.data.seriesPart;
+            document.getElementById("season").value = response.data.season;
+            document.getElementById("status").value = response.data.status;
+            document.getElementById("timestamp").value = response.data.timestamp;
+            document.getElementById("ownStatus").value = response.data.ownStatus;
+            document.getElementById("filmId").value = response.data.filmId;
+            document.getElementById("message").innerText = "Anime already exists";
+            document.getElementById("submit").disabled = true;
+        } else {
+            document.getElementById("series").value = "series" in response.data ? response.data.series : response.data.name;
+            if ("seriesPart" in response.data)
+                document.getElementById("seriesPart").value = response.data.seriesPart;
+            if ("season" in response.data)
+                document.getElementById("season").value = response.data.season;
+            document.getElementById("timestamp").max = response.data.volume;
+            document.getElementById("message").innerText = "";
+            document.getElementById("submit").disabled = false;
+        }
+        if (response.data.relations) {
+            let newRelations = [];
+            for (let i in response.data.relations) {
+                let relation = response.data.relations[i];
+                const hasRelation = await axios.get("http://localhost:8080/api/has", { params: { url: relation.id }});
+                if (!hasRelation.data && !relations.some(item => item.id === relation.id)) {
+                    newRelations.push(relation);
+                }
+            }
+            setRelations(relations.concat(newRelations));
+        }
+        document.getElementById("status").dispatchEvent(new Event("change", { bubbles: true }))
+        document.getElementById("ownStatus").dispatchEvent(new Event("change", { bubbles: true }))
+    }
+
     async function addAPI() {
         const data = Object.fromEntries(new FormData(document.getElementById("animeInfo")).entries());
         const response = await axios.put("http://localhost:8080/api/add", { data: data, url: addUrl});
@@ -15,60 +69,6 @@ function AddPopup() {
     }
 
     useEffect(() => {
-        async function getAPI(url){
-            const response = await axios.get("http://localhost:8080/api/get", { params: { url: url }});
-            console.log(JSON.stringify(response.data, null, 2));
-            document.getElementById("animeInfo").style.display = "block";
-            document.getElementById("cover").src = response.data.cover;
-            document.querySelector("select#name").replaceChildren();
-            if (Array.isArray(response.data.name)) {
-                document.querySelector("h3#name").style.display = "none";
-                const select = document.querySelector("select#name");
-                select.style.display = "block";
-                response.data.name.forEach(name => {
-                    const option = new Option(name, name);
-                    select.add(option);
-                });
-            } else {
-                document.querySelector("h3#name").style.display = "block";
-                document.querySelector("select#name").style.display = "none";
-                document.querySelector("h3#name").innerText = response.data.name;
-            }
-            if (response.data.fromDB) {
-                document.getElementById("series").value = response.data.series;
-                document.getElementById("seriesPart").value = response.data.seriesPart;
-                document.getElementById("season").value = response.data.season;
-                document.getElementById("status").value = response.data.status;
-                document.getElementById("timestamp").value = response.data.timestamp;
-                document.getElementById("ownStatus").value = response.data.ownStatus;
-                document.getElementById("filmId").value = response.data.filmId;
-                document.getElementById("message").innerText = "Anime already exists";
-                document.getElementById("submit").disabled = true;
-            } else {
-                document.getElementById("series").value = "series" in response.data ? response.data.series : response.data.name;
-                if ("seriesPart" in response.data)
-                    document.getElementById("seriesPart").value = response.data.seriesPart;
-                if ("season" in response.data)
-                    document.getElementById("season").value = response.data.season;
-                document.getElementById("timestamp").max = response.data.volume;
-                document.getElementById("message").innerText = "";
-                document.getElementById("submit").disabled = false;
-            }
-            if (response.data.relations) {
-                let newRelations = [];
-                for (let i in response.data.relations) {
-                    let relation = response.data.relations[i];
-                    const hasRelation = await axios.get("http://localhost:8080/api/has", { params: { url: relation.id }});
-                    if (!hasRelation.data && !relations.some(item => item.id === relation.id)) {
-                        newRelations.push(relation);
-                    }
-                }
-                setRelations(relations.concat(newRelations));
-            }
-            document.getElementById("status").dispatchEvent(new Event("change", { bubbles: true }))
-            document.getElementById("ownStatus").dispatchEvent(new Event("change", { bubbles: true }))
-        }
-
         const timer = setTimeout(() => {
             document.querySelector("#popup input").value = addUrl;
             document.getElementById("animeInfo").reset();
@@ -79,7 +79,7 @@ function AddPopup() {
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [addUrl, relations]);
+    }, [addUrl]);
 
     return (
         <>

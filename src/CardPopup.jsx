@@ -8,13 +8,13 @@ function CardPopup() {
     const { id } = useParams();
     const [item, setItem] = useState({});
 
-    useEffect(() => {
-        async function getDbInfo(){
-            const response = await axios.post("http://localhost:8080/api/get", { filter: { _id: id } });
-            console.log(response.data[0]);
-            return response.data[0];
-        }
+    async function getDbInfo(){
+        const response = await axios.post("http://localhost:8080/api/get", { filter: { _id: id } });
+        console.log(response.data[0]);
+        return response.data[0];
+    }
 
+    useEffect(() => {
         getDbInfo().then(setItem);
     }, [id]);
 
