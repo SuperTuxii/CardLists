@@ -52,6 +52,10 @@ function CardPopup() {
                           <label>{item.timestamp} of {item.volume} {item.volumeEstimated ? "?" : ""} {item.units}</label>
                       </div>
                       <div className="row">
+                          <label>Status</label>
+                          <label>{item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : ""}</label>
+                      </div>
+                      <div className="row">
                           <label>Publish Status</label>
                           <label>{item.publishStatus ? item.publishStatus.charAt(0).toUpperCase() + item.publishStatus.slice(1) : ""}</label>
                       </div>

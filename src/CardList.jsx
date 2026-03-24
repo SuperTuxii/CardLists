@@ -3,15 +3,63 @@ import {Link} from "react-router";
 import axios from "axios";
 import './CardList.css';
 
+const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)))?)/g;
+const propertyMap = {
+    id: "_id",
+    alias: "aliases",
+    genre: "genres",
+    language: "languages",
+    dubLanguage: "dubLanguages",
+    subLanguage: "subLanguages"
+};
+
 function CardList() {
     const [search, setSearch] = useState("");
-    const searchRegex = new RegExp(search, "i");
-    const searchGlobalRegex = new RegExp(search, "ig");
+    const [filters, setFilters] = useState({
+        search: ["name"],
+        status: [],
+        publishStatus: [],
+        ownStatus: []
+    });
     const [fullTableData, setFullTableData] = useState([]);
-    const tableData = fullTableData
-        .filter(data => searchRegex.test(data.name))
-        .sort((a, b) => b.name.match(searchGlobalRegex).reduce((acc, val) => acc + val.length, 0) - a.name.match(searchGlobalRegex).reduce((acc, val) => acc + val.length, 0));
+    const tableData = doFilterAndSearch(fullTableData, search, filters);
     const [cards, setCards] = useState(["aliases", "series", "time", "progress"]);
+
+    function doFilterAndSearch(data, search, filters) {
+        const propertySpecifiers = [];
+        (search.match(propertySpecifierRegex) ?? []).map(s => s.trim()).forEach(specifier => {
+            const property = specifier.replace(propertySpecifierRegex, "$1");
+            propertySpecifiers.push([property in propertyMap ? propertyMap[property] : property, new RegExp(specifier.replace(propertySpecifierRegex, "$2").replace(/^"|"$/g, ""), "i")]);
+        });
+        search = search.replace(propertySpecifierRegex, "");
+
+        const searchRegex = new RegExp(search, "i");
+        data = data
+            .filter(data => {
+                if (filters.status.length && !filters.status.includes(data.status))
+                    return false;
+                if (filters.publishStatus.length && !filters.publishStatus.includes(data.publishStatus))
+                    return false;
+                if (filters.ownStatus.length && !filters.ownStatus.includes(data.ownStatus))
+                    return false;
+                for (let i = 0; i < propertySpecifiers.length; i++) {
+                    const [property, specifier] = propertySpecifiers.at(i);
+                    if (Array.isArray(data[property])) {
+                        if (data[property].length === 0)
+                            return false;
+                        if (typeof data[property][0] === "string" && !data[property].some(s => specifier.test(s)))
+                            return false;
+                        else if (typeof data[property][0] === "object" && !data[property].some(o => specifier.test(o.name)))
+                            return false;
+                    } else if (!specifier.test(data[property])) {
+                        return false;
+                    }
+                }
+                return true;
+            })
+            .filter(data => filters.search.some(filter => searchRegex.test(data[filter])));
+        return data;
+    }
 
     async function getDbAPI(params){
         const response = await axios.post("http://localhost:8080/api/get", params);
@@ -22,22 +70,7 @@ function CardList() {
     useEffect(() => {
         getDbAPI({
             filter: {},
-            sort: { name: 1 },
-            // projection: {
-            //     _id: true,
-            //     name: true,
-            //     aliases: true,
-            //     series: true,
-            //     status: true,
-            //     timestamp: true,
-            //     volume: true,
-            //     volumeEstimated: true,
-            //     timePerUnit: true,
-            //     totalTime: true,
-            //     units: true,
-            //     publishStatus: true,
-            //     cover: true
-            // }
+            sort: { name: 1 }
         }).then(setFullTableData);
 
         function handleClickOutside(event) {
@@ -92,45 +125,73 @@ function CardList() {
                     <input className="fill" placeholder={"Search"} onChange={e => setSearch(e.target.value)}></input>
                     <div className={"dropdown"} id={"filter-dropdown"}>
                         <button onClick={handleClickDropdown}>Filter</button>
-                        <div className={"dropdown-content right"} tabIndex={-1}>
+                        <div className={"dropdown-content right"} id={"search-filter-dropdown"} tabIndex={-1}>
                             <div className={"subdropdown"}>
                                 <label>Search</label>
-                                <div className={"dropdown-content right"} tabIndex={-1}>
-                                    <label><input type={"checkbox"} defaultChecked={true} />Name</label>
-                                    <label><input type={"checkbox"} />Aliases</label>
-                                    <label><input type={"checkbox"} />Series</label>
-                                    <label><input type={"checkbox"} />Genres</label>
-                                    <label><input type={"checkbox"} />Studio</label>
-                                    <label><input type={"checkbox"} />Staff</label>
-                                    <label><input type={"checkbox"} />ID</label>
-                                    <label><input type={"checkbox"} />Film ID</label>
+                                <div className={"dropdown-content right"} tabIndex={-1} onChange={() => {
+                                    let searchFilter = [];
+                                    document.querySelectorAll("#search-filter-dropdown .dropdown-content input").forEach(input => {
+                                        if (input.checked)
+                                            searchFilter.push(input.name);
+                                    });
+                                    setFilters({...filters, search: searchFilter});
+                                }}>
+                                    <label><input type={"checkbox"} name={"name"} defaultChecked={true} />Name</label>
+                                    <label><input type={"checkbox"} name={"aliases"} />Aliases</label>
+                                    <label><input type={"checkbox"} name={"series"} />Series</label>
+                                    <label><input type={"checkbox"} name={"genres"} />Genres</label>
+                                    <label><input type={"checkbox"} name={"studio"} />Studio</label>
+                                    <label><input type={"checkbox"} name={"staff"} />Staff</label>
+                                    <label><input type={"checkbox"} name={"_id"} />ID</label>
+                                    <label><input type={"checkbox"} name={"filmId"} />Film ID</label>
                                 </div>
                             </div>
-                            <div className={"subdropdown"}>
+                            <div className={"subdropdown"} id={"status-filter-dropdown"}>
                                 <label>Status</label>
-                                <div className={"dropdown-content right"} tabIndex={-1}>
-                                    <label><input type={"checkbox"} />Ongoing</label>
-                                    <label><input type={"checkbox"} />Queue</label>
-                                    <label><input type={"checkbox"} />Done</label>
-                                    <label><input type={"checkbox"} />Abandoned</label>
+                                <div className={"dropdown-content right"} tabIndex={-1} onChange={() => {
+                                    let statusFilter = [];
+                                    document.querySelectorAll("#status-filter-dropdown .dropdown-content input").forEach(input => {
+                                        if (input.checked)
+                                            statusFilter.push(input.name);
+                                    });
+                                    setFilters({...filters, status: statusFilter});
+                                }}>
+                                    <label><input type={"checkbox"} name={"ongoing"} />Ongoing</label>
+                                    <label><input type={"checkbox"} name={"queue"} />Queue</label>
+                                    <label><input type={"checkbox"} name={"done"} />Done</label>
+                                    <label><input type={"checkbox"} name={"abandoned"} />Abandoned</label>
                                 </div>
                             </div>
-                            <div className={"subdropdown"}>
+                            <div className={"subdropdown"} id={"publish-status-filter-dropdown"}>
                                 <label>Publish Status</label>
-                                <div className={"dropdown-content right"} tabIndex={-1}>
-                                    <label><input type={"checkbox"} />Upcoming</label>
-                                    <label><input type={"checkbox"} />Ongoing</label>
-                                    <label><input type={"checkbox"} />Completed</label>
-                                    <label><input type={"checkbox"} />Canceled</label>
+                                <div className={"dropdown-content right"} tabIndex={-1} onChange={() => {
+                                    let publishStatusFilter = [];
+                                    document.querySelectorAll("#publish-status-filter-dropdown .dropdown-content input").forEach(input => {
+                                        if (input.checked)
+                                            publishStatusFilter.push(input.name);
+                                    });
+                                    setFilters({...filters, publishStatus: publishStatusFilter});
+                                }}>
+                                    <label><input type={"checkbox"} name={"upcoming"} />Upcoming</label>
+                                    <label><input type={"checkbox"} name={"ongoing"} />Ongoing</label>
+                                    <label><input type={"checkbox"} name={"done"} />Done</label>
+                                    <label><input type={"checkbox"} name={"abandoned"} />Abandoned</label>
                                 </div>
                             </div>
-                            <div className={"subdropdown"}>
+                            <div className={"subdropdown"} id={"own-status-filter-dropdown"}>
                                 <label>Own Status</label>
-                                <div className={"dropdown-content right"} tabIndex={-1}>
-                                    <label><input type={"checkbox"} />Unknown</label>
-                                    <label><input type={"checkbox"} />Planned</label>
-                                    <label><input type={"checkbox"} />Ongoing</label>
-                                    <label><input type={"checkbox"} />Owned</label>
+                                <div className={"dropdown-content right"} tabIndex={-1} onChange={() => {
+                                    let ownStatusFilter = [];
+                                    document.querySelectorAll("#own-status-filter-dropdown .dropdown-content input").forEach(input => {
+                                        if (input.checked)
+                                            ownStatusFilter.push(input.name);
+                                    });
+                                    setFilters({...filters, ownStatus: ownStatusFilter});
+                                }}>
+                                    <label><input type={"checkbox"} name={"unknown"} />Unknown</label>
+                                    <label><input type={"checkbox"} name={"planned"} />Planned</label>
+                                    <label><input type={"checkbox"} name={"ongoing"} />Ongoing</label>
+                                    <label><input type={"checkbox"} name={"owned"} />Owned</label>
                                 </div>
                             </div>
                         </div>
