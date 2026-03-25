@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
 const anisearchAPI = require("./anisearch_api");
-const {getAnisearchURL, getIdFromURL, updateAnimeData} = require("./anisearch_api");
+const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid} = require("./anisearch_api");
 const _ = require('lodash');
 
 const app = express();
@@ -102,24 +102,51 @@ app.post("/api/get", async (req, res) => {
 
 app.post("/api/update", async (req, res) => {
     try {
-        let updates = 0;
-        let update = {};
+        let updates = {acknowledged: 0, not_acknowledged: 0, last: {}};
         const collection = mongoClient.db("cards_lists").collection("anime");
         const cursor = await collection.find("filter" in req.body ? req.body.filter : {});
         for await (const data of cursor) {
             const newData = await updateAnimeData(data);
             if (!_.isEqual(newData, data)) {
-                updates++;
-                update = newData;
-                await collection.replaceOne({_id: data._id}, newData);
+                const result = await collection.replaceOne({_id: data._id}, newData);
+                if (result.acknowledged) {
+                    updates.acknowledged++;
+                    updates.last = newData;
+                } else {
+                    updates.not_acknowledged++;
+                }
             }
         }
-        res.status(200).send(updates > 1 ? `${updates} entries updated` : updates > 0 ? `${update.name} updated` : "Nothing updated");
+        let message = updates.acknowledged > 1 ? `${updates.acknowledged} entries updated` : updates.acknowledged > 0 ? `${updates.last.name} updated` : "Nothing updated";
+        if (updates.not_acknowledged > 0) {
+            message += ` (${updates.not_acknowledged} entries updatable, but not acknowledged)`;
+        }
+        res.status(200).send(message);
     } catch (e) {
         console.error(`Error occurred while trying to update anime data: ${e}`);
         res.status(500).send(e);
     }
 });
+
+app.post("/api/edit", async (req, res) => {
+    console.log(req.body);
+    if ("id" in req.body && "data" in req.body && isUserDataValid(req.body.data)) {
+        try {
+            const collection = mongoClient.db("cards_lists").collection("anime");
+            const result = await collection.updateOne({ _id: req.body.id }, { $set: req.body.data}, { upsert: false });
+            if (result.acknowledged) {
+                res.status(200).send("Changes were successfully saved");
+            } else {
+                res.status(500).send("Update was not acknowledged");
+            }
+        } catch (e) {
+            console.error(`Error occurred while trying to edit anime ${req.body.id}: ${e}`);
+            res.sendStatus(500);
+        }
+    } else {
+        res.status(400).send("Incorrect body format");
+    }
+})
 
 app.put("/api/add", async (req, res) => {
     console.log(JSON.stringify(req.body));

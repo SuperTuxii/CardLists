@@ -67,10 +67,14 @@ export async function getAnisearchURL(url) {
     return url;
 }
 
+export function isUserDataValid(userData) {
+    return Object.keys(userData).every(key => userDataKeys.includes(key));
+}
+
 export async function getAnimeData(url, userData = {}) {
     if (!strictUrlRegex.test(url))
         url = await getAnisearchURL(url);
-    if (!Object.keys(userData).every(key => userDataKeys.includes(key)))
+    if (!isUserDataValid(userData))
         throw "The user data has the wrong format " + userDataKeys;
 
     let document;

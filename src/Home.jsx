@@ -10,7 +10,7 @@ function Home() {
             <nav>
                 <Link to="/">Home</Link>
                 <Link to="/add">Add Anime</Link>
-                <Link to={location.pathname} className={"right"} onClick={() => axios.post("http://localhost:8080/api/update", {}).then(response => toast(response.data))}>Update All</Link>
+                <Link to={location.pathname} className={"right"} onClick={() => axios.post("http://localhost:8080/api/update", {}).then(response => toast(response.data, { type: "info" }))}>Update All</Link>
             </nav>
             <CardList />
             <Outlet />

@@ -60,6 +60,9 @@
     display: none;
     width: 100%;
     box-sizing: border-box;
+}
+
+#animeInfo:not(.no-border) {
     padding-top: 5px;
     padding-bottom: 10px;
     margin-top: 15px;

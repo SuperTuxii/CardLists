@@ -3,6 +3,7 @@ import Home from "./Home.jsx";
 import AddPopup from "./AddPopup.jsx";
 import CardPopup from "./CardPopup.jsx";
 import './App.css';
+import EditPopup from "./EditPopup.jsx";
 
 function App() {
     let router = createBrowserRouter([
@@ -17,6 +18,10 @@ function App() {
                 {
                     path: "show/:id",
                     Component: CardPopup
+                },
+                {
+                    path: "edit/:id",
+                    Component: EditPopup
                 }
             ]
         },
