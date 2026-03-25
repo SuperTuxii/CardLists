@@ -37,6 +37,14 @@
     box-sizing: border-box;
 }
 
+#popup .top-right-items {
+    display: flex;
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    gap: 15px;
+}
+
 #popup img#cover {
     border: 1px solid var(--tab-outline-color);
     border-radius: 10px;

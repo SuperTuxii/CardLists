@@ -2,7 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
 const anisearchAPI = require("./anisearch_api");
-const {getAnisearchURL, getIdFromURL} = require("./anisearch_api");
+const {getAnisearchURL, getIdFromURL, updateAnimeData} = require("./anisearch_api");
+const _ = require('lodash');
 
 const app = express();
 const corsOptions = {
@@ -97,7 +98,28 @@ app.post("/api/get", async (req, res) => {
     } else {
         res.status(400).send("Invalid body");
     }
-})
+});
+
+app.post("/api/update", async (req, res) => {
+    try {
+        let updates = 0;
+        let update = {};
+        const collection = mongoClient.db("cards_lists").collection("anime");
+        const cursor = await collection.find("filter" in req.body ? req.body.filter : {});
+        for await (const data of cursor) {
+            const newData = await updateAnimeData(data);
+            if (!_.isEqual(newData, data)) {
+                updates++;
+                update = newData;
+                await collection.replaceOne({_id: data._id}, newData);
+            }
+        }
+        res.status(200).send(updates > 1 ? `${updates} entries updated` : updates > 0 ? `${update.name} updated` : "Nothing updated");
+    } catch (e) {
+        console.error(`Error occurred while trying to update anime data: ${e}`);
+        res.status(500).send(e);
+    }
+});
 
 app.put("/api/add", async (req, res) => {
     console.log(JSON.stringify(req.body));

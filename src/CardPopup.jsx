@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
+import {toast} from "react-toastify";
 
 
 function CardPopup() {
@@ -25,6 +26,10 @@ function CardPopup() {
           </Link>
           <div id="popup">
               <h3 id="name">{item.name}</h3>
+              <div className={"top-right-items"}>
+                <button>Edit</button>
+                <button onClick={() => axios.post("http://localhost:8080/api/update", {filter: {_id: id}}).then(response => toast(response.data))}>Update</button>
+              </div>
               <div className="horizontal">
                   <div className="table">
                       <div className="row">

@@ -246,6 +246,10 @@ export async function getAnimeData(url, userData = {}) {
     return properties;
 }
 
+export async function updateAnimeData(oldData) {
+    return getAnimeData(oldData._id, Object.fromEntries(Object.entries(oldData).filter(([key]) => userDataKeys.includes(key))));
+}
+
 export async function getRelations(url) {
     if (!strictUrlRegex.test(url))
         url = await getAnisearchURL(url);

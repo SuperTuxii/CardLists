@@ -23,6 +23,10 @@ nav a:hover {
     background-color: #111111;
 }
 
+nav a.right {
+    margin-left: auto;
+}
+
 .fill {
     width: 100%;
     box-sizing: border-box;

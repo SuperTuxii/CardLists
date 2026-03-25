@@ -5,6 +5,9 @@
     --interactive-accent: #00FFFF;
     --link-color: var(--interactive-accent);
 
+    --toastify-color-dark: var(--background-secondary-color);
+    --toastify-font-family: Roboto, Helvetica, Arial, sans-serif;
+
     font-family: Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
