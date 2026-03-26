@@ -1,10 +1,11 @@
 import {useEffect, useState} from "react";
-import {Link} from "react-router";
+import {Link, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
 import {toast} from "react-toastify";
 
 function AddPopup() {
+    const { id } = useParams();
     const [addUrl, setAddUrl] = useState("");
     const [relations, setRelations] = useState([]);
     const [data, setData] = useState({});
@@ -40,6 +41,12 @@ function AddPopup() {
     }
 
     useEffect(() => {
+        if (id)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setAddUrl(id);
+    }, [id]);
+
+    useEffect(() => {
         const timer = setTimeout(() => {
             document.querySelector("#popup input").value = addUrl;
             document.getElementById("animeInfo").reset();
@@ -48,7 +55,7 @@ function AddPopup() {
             } else {
                 setData({});
             }
-        }, 500);
+        }, addUrl === id && !document.querySelector("#popup input").value ? 0 : 500);
         return () => clearTimeout(timer);
     }, [addUrl]);
 
@@ -138,7 +145,7 @@ function AddPopup() {
                     <label id={"message"}>{data.fromDB ? "Anime already exists" : ""}</label><br/>
                     <input type="submit" value="Create Anime" disabled={data.fromDB} id={"submit"} />
                 </form>
-                <ul className={"cover-list"} onWheel={e => e.currentTarget.scrollLeft += e.deltaY}>
+                <ul className={"cover-list"}>
                     {relations.map(relation => (
                         <li key={relation.id} onClick={() => {
                             setAddUrl(relation.id);

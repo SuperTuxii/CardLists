@@ -16,6 +16,10 @@ function App() {
                     Component: AddPopup
                 },
                 {
+                    path: "add/:id",
+                    Component: AddPopup
+                },
+                {
                     path: "show/:id",
                     Component: CardPopup
                 },

@@ -343,7 +343,7 @@ function CardList() {
                                 {cards.includes("progress") ?
                                     <td>
                                         <progress max={item.volume} value={item.timestamp}></progress>
-                                        {item.timestamp} of {item.volume} {item.volumeEstimated ? "?" : ""} {item.units} ({Math.round(Number(item.timestamp)/Number(item.volume)*100)}%)
+                                        {item.timestamp} of {item.volume}{item.volumeEstimated ? "?" : ""} {item.units} ({Math.round(Number(item.timestamp)/Number(item.volume)*100)}%)
                                     </td> : <></>
                                 }
                             </tr>

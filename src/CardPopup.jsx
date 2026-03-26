@@ -54,7 +54,7 @@ function CardPopup() {
                       </div>
                       <div className="row">
                           <label>Progress</label>
-                          <label>{item.timestamp} of {item.volume} {item.volumeEstimated ? "?" : ""} {item.units}</label>
+                          <label>{item.timestamp} of {item.volume}{item.volumeEstimated ? "?" : ""} {item.units}</label>
                       </div>
                       <div className="row">
                           <label>Status</label>
