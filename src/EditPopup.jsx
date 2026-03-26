@@ -113,7 +113,7 @@ function EditPopup() {
                                 <input className="fill" type={"number"} min={0} defaultValue={data.filmId} name={"filmId"} id={"filmId"}/>
                             </div>
                         </div>
-                        <img id="cover" src={data.cover} alt={"Cover of the anime to add"} />
+                        <Link to={"https://www.anisearch.com/anime/" + data._id} target={"_blank"}><img id="cover" src={data.cover} alt={"Cover of the anime to add"} /></Link>
                     </div>
                     <input type="submit" value="Save Changes" id={"submit"} />
                 </form>

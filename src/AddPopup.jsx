@@ -140,7 +140,7 @@ function AddPopup() {
                                 <input className="fill" type={"number"} min={0} defaultValue={"filmId" in data ? data.filmId : undefined} name={"filmId"} id={"filmId"}/>
                             </div>
                         </div>
-                        <img id="cover" src={"cover" in data ? data.cover : undefined} alt={"Cover of the anime to add"} />
+                        <Link to={"https://www.anisearch.com/anime/" + data._id} target={"_blank"}><img id="cover" src={"cover" in data ? data.cover : undefined} alt={"Cover of the anime to add"} /></Link>
                     </div>
                     <label id={"message"}>{data.fromDB ? "Anime already exists" : ""}</label><br/>
                     <input type="submit" value="Create Anime" disabled={data.fromDB} id={"submit"} />

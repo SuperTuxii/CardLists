@@ -138,7 +138,7 @@ function CardPopup() {
                           :<></>
                       }
                   </div>
-                  <img id="cover" src={item.cover} alt="Card Cover Image" />
+                  <Link to={"https://www.anisearch.com/anime/" + item._id} target={"_blank"}><img id="cover" src={item.cover} alt="Card Cover Image" /></Link>
               </div>
           </div>
       </>
