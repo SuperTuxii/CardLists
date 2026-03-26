@@ -28,7 +28,7 @@ function CardPopup() {
               <h3 id="name">{item.name}</h3>
               <div className={"top-right-items"}>
                 <Link to={`/edit/${id}`}><button>Edit</button></Link>
-                <button onClick={() => axios.post("http://localhost:8080/api/update", {filter: {_id: id}}).then(response => toast(response.data, { type: "info" }))}>Update</button>
+                <button onClick={() => axios.post("http://localhost:8080/api/update", {filter: {_id: id}}).then(response => toast(typeof response.data === "string" ? response.data : JSON.stringify(response.data), { type: (response.status >= 200 && response.status < 300) ? "info" : "error" }))}>Update</button>
               </div>
               <div className="horizontal">
                   <div className="table">

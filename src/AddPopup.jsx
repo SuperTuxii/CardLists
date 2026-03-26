@@ -35,8 +35,8 @@ function AddPopup() {
 
     async function addAPI() {
         const data = Object.fromEntries(new FormData(document.getElementById("animeInfo")).entries());
-        const response = await axios.put("http://localhost:8080/api/add", { data: data, url: addUrl});
-        toast(response.data, { type: (response.status >= 200 && response.status < 300) ? "success" : "error" });
+        const response = await axios.put("http://localhost:8080/api/add", { data: data, url: addUrl });
+        toast(typeof response.data === "string" ? response.data : JSON.stringify(response.data), { type: (response.status >= 200 && response.status < 300) ? "success" : "error" });
         setAddUrl("");
     }
 

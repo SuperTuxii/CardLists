@@ -17,8 +17,8 @@ function EditPopup() {
 
     async function editAPI() {
         const data = Object.fromEntries(new FormData(document.getElementById("animeInfo")).entries());
-        const response = await axios.post("http://localhost:8080/api/edit", { data: data, id: id});
-        toast(response.data, { type: (response.status >= 200 && response.status < 300) ? "success" : "error" });
+        const response = await axios.post("http://localhost:8080/api/edit", { data: data, id: id });
+        toast(typeof response.data === "string" ? response.data : JSON.stringify(response.data), { type: (response.status >= 200 && response.status < 300) ? "success" : "error" });
     }
 
     useEffect(() => {

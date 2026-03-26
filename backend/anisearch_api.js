@@ -246,6 +246,8 @@ export async function getAnimeData(url, userData = {}) {
     //     console.warn(`Cover url not found in script json data. Using image src attribute (${url})`);
     //     properties.cover = document.querySelector("img#details-cover").getAttribute("src");
     // }
+    // relations
+    properties.relations = await getRelations(url);
 
     return properties;
 }

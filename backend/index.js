@@ -36,11 +36,13 @@ app.get("/api/get", async (req, res) => {
                 data.fromDB = true;
             } else {
                 data = await anisearchAPI.getAnimeData(req.query.url);
-                data.relations = await anisearchAPI.getRelations(req.query.url);
                 let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
                     .sort({_id: 1})
                     .project({_id: true, series: true, seriesPart: true, season: true})
                     .toArray();
+                for (let relation of data.relations) {
+                    relation.inDB = relations.some(relation2 => relation.id === relation2._id);
+                }
                 console.log(JSON.stringify(relations));
                 if (relations.length) {
                     let relation = relations.find((relation) => data.relations.find((relation2) => relation2.id === relation._id).type === "Prequel");
@@ -56,7 +58,7 @@ app.get("/api/get", async (req, res) => {
             res.json(data);
         } catch (e) {
             console.error(`Error occurred while trying to get anime data from url: ${e}`);
-            res.status(500).send(e);
+            res.status(500).send(`Error occurred while trying to get anime data from url: ${e}`);
         }
     } else {
         res.status(400).send("Invalid query parameters");
@@ -70,7 +72,7 @@ app.get("/api/has", async (req, res) => {
             res.json(await collection.findOne({_id: getIdFromURL(req.query.url)}) !== null);
         } catch (e) {
             console.error(`Error occurred while checking if anime data exists for url: ${e}`);
-            res.status(500).send(e);
+            res.status(500).send(`Error occurred while checking if anime data exists for url: ${e}`);
         }
     } else {
         res.status(400).send("Invalid query parameters");
@@ -93,7 +95,7 @@ app.post("/api/get", async (req, res) => {
             res.json(await cursor.toArray());
         } catch (e) {
             console.error(`Error occurred while trying to get anime data from database: ${e}`);
-            res.status(500).send(e);
+            res.status(500).send(`Error occurred while trying to get anime data from database: ${e}`);
         }
     } else {
         res.status(400).send("Invalid body");
@@ -107,6 +109,13 @@ app.post("/api/update", async (req, res) => {
         const cursor = await collection.find("filter" in req.body ? req.body.filter : {});
         for await (const data of cursor) {
             const newData = await updateAnimeData(data);
+            let relations = await collection.find({_id: {$in: newData.relations.map(relation => relation.id)}})
+                .sort({_id: 1})
+                .project({_id: true, series: true, seriesPart: true, season: true})
+                .toArray();
+            for (let relation of newData.relations) {
+                relation.inDB = relations.some(relation2 => relation.id === relation2._id);
+            }
             if (!_.isEqual(newData, data)) {
                 const result = await collection.replaceOne({_id: data._id}, newData);
                 if (result.acknowledged) {
@@ -124,7 +133,7 @@ app.post("/api/update", async (req, res) => {
         res.status(200).send(message);
     } catch (e) {
         console.error(`Error occurred while trying to update anime data: ${e}`);
-        res.status(500).send(e);
+        res.status(500).send(`Error occurred while trying to update anime data: ${e}`);
     }
 });
 
@@ -141,7 +150,7 @@ app.post("/api/edit", async (req, res) => {
             }
         } catch (e) {
             console.error(`Error occurred while trying to edit anime ${req.body.id}: ${e}`);
-            res.sendStatus(500);
+            res.status(500).send(`Error occurred while trying to edit anime ${req.body.id}: ${e}`);
         }
     } else {
         res.status(400).send("Incorrect body format");
@@ -157,7 +166,15 @@ app.put("/api/add", async (req, res) => {
                 res.status(409).send("Anime Data already exists");
                 return;
             }
-            const result = await collection.insertOne(await anisearchAPI.getAnimeData(req.body.url, req.body.data));
+            const data = await anisearchAPI.getAnimeData(req.body.url, req.body.data);
+            let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
+                .sort({_id: 1})
+                .project({_id: true, series: true, seriesPart: true, season: true})
+                .toArray();
+            for (let relation of data.relations) {
+                relation.inDB = relations.some(relation2 => relation.id === relation2._id);
+            }
+            const result = await collection.insertOne(data);
             if (result.acknowledged) {
                 res.status(201).send("Anime was successfully added");
             } else {
@@ -165,7 +182,7 @@ app.put("/api/add", async (req, res) => {
             }
         } catch (e) {
             console.error(`Error occurred while trying to add anime ${req.body.url}: ${e}`);
-            res.sendStatus(500);
+            res.status(500).send(`Error occurred while trying to add anime ${req.body.url}: ${e}`);
         }
     } else {
         res.status(400).send("Incorrect body format");
