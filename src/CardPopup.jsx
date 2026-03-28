@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Link, useParams} from "react-router";
+import {Link, useNavigate, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
 import {toast} from "react-toastify";
@@ -7,6 +7,7 @@ import {toast} from "react-toastify";
 
 function CardPopup() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [item, setItem] = useState({});
 
     async function getDbInfo(){
@@ -25,7 +26,7 @@ function CardPopup() {
               <div id="overlay"></div>
           </Link>
           <div id="popup">
-              <h3 id="name">{item.name}</h3>
+              <h2 id="name">{item.name}</h2>
               <div className={"top-right-items"}>
                 <Link to={`/edit/${id}`}><button>Edit</button></Link>
                 <button onClick={() => axios.post("http://localhost:8080/api/update", {filter: {_id: id}}).then(response => toast(typeof response.data === "string" ? response.data : JSON.stringify(response.data), { type: (response.status >= 200 && response.status < 300) ? "info" : "error" }))}>Update</button>
@@ -140,6 +141,47 @@ function CardPopup() {
                   </div>
                   <Link to={"https://www.anisearch.com/anime/" + item._id} target={"_blank"}><img id="cover" src={item.cover} alt="Card Cover Image" /></Link>
               </div>
+              {item.relations && item.relations.length ?
+                  <>
+                      <h3>Relations</h3>
+                      <ul className={"cover-list"}>
+                          {item.relations.map(relation => (
+                              <li key={relation.id} onClick={() => {
+                                   if (relation.inDB)
+                                       navigate(`/show/${relation.id}`);
+                                   else
+                                       navigate(`/add/${relation.id}`);
+                              }}>
+                                  <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
+                                  <span>
+                                  <span>{relation.type}</span>
+                                      {relation.name}
+                              </span>
+                              </li>
+                          ))}
+                      </ul>
+                  </> : <></>
+              }
+              {item.allRelations && item.allRelations.length && item.allRelations.some((allRelation) => !item.relations.some((relation) => allRelation.id === relation.id)) ?
+                  <>
+                      <h3>All Relations</h3>
+                      <ul className={"cover-list"}>
+                          {item.allRelations.map(relation => (
+                              <li key={relation.id} onClick={() => {
+                                  if (relation.inDB)
+                                      navigate(`/show/${relation.id}`);
+                                  else
+                                      navigate(`/add/${relation.id}`);
+                              }}>
+                                  <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
+                                  <span>
+                              {relation.name}
+                          </span>
+                              </li>
+                          ))}
+                      </ul>
+                  </> : <></>
+              }
           </div>
       </>
     );

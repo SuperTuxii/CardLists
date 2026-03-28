@@ -43,6 +43,13 @@ app.get("/api/get", async (req, res) => {
                 for (let relation of data.relations) {
                     relation.inDB = relations.some(relation2 => relation.id === relation2._id);
                 }
+                let allRelations = await collection.find({_id: {$in: data.allRelations.map(relation => relation.id)}})
+                    .sort({_id: 1})
+                    .project({_id: true, series: true, seriesPart: true, season: true})
+                    .toArray();
+                for (let relation of data.allRelations) {
+                    relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
+                }
                 console.log(JSON.stringify(relations));
                 if (relations.length) {
                     let relation = relations.find((relation) => data.relations.find((relation2) => relation2.id === relation._id).type === "Prequel");
@@ -53,6 +60,8 @@ app.get("/api/get", async (req, res) => {
                         data.season = Number(relation.season) + 1;
                     }
                     data.series = relation.series;
+                } else if (allRelations.length) {
+                    data.series = allRelations[0].series;
                 }
             }
             res.json(data);
@@ -111,10 +120,17 @@ app.post("/api/update", async (req, res) => {
             const newData = await updateAnimeData(data);
             let relations = await collection.find({_id: {$in: newData.relations.map(relation => relation.id)}})
                 .sort({_id: 1})
-                .project({_id: true, series: true, seriesPart: true, season: true})
+                .project({_id: true})
                 .toArray();
             for (let relation of newData.relations) {
                 relation.inDB = relations.some(relation2 => relation.id === relation2._id);
+            }
+            let allRelations = await collection.find({_id: {$in: newData.allRelations.map(relation => relation.id)}})
+                .sort({_id: 1})
+                .project({_id: true})
+                .toArray();
+            for (let relation of newData.allRelations) {
+                relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
             }
             if (!_.isEqual(newData, data)) {
                 const result = await collection.replaceOne({_id: data._id}, newData);
@@ -173,6 +189,13 @@ app.put("/api/add", async (req, res) => {
                 .toArray();
             for (let relation of data.relations) {
                 relation.inDB = relations.some(relation2 => relation.id === relation2._id);
+            }
+            let allRelations = await collection.find({_id: {$in: data.allRelations.map(relation => relation.id)}})
+                .sort({_id: 1})
+                .project({_id: true, series: true, seriesPart: true, season: true})
+                .toArray();
+            for (let relation of data.allRelations) {
+                relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
             }
             const result = await collection.insertOne(data);
             if (result.acknowledged) {

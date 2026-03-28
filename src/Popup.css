@@ -148,7 +148,9 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: var(--cards-title-link-row-height);
+    min-height: var(--cards-title-link-row-height);
+    height: fit-content;
+    box-sizing: border-box;
     padding: var(--cards-title-link-vertical-padding) var(--cards-title-link-horizontal-padding);
     align-items: var(--cards-title-link-vertical-alignment);
     justify-content: var(--cards-title-link-horizontal-alignment);

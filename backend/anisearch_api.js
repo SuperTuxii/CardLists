@@ -246,8 +246,8 @@ export async function getAnimeData(url, userData = {}) {
     //     console.warn(`Cover url not found in script json data. Using image src attribute (${url})`);
     //     properties.cover = document.querySelector("img#details-cover").getAttribute("src");
     // }
-    // relations
-    properties.relations = await getRelations(url);
+    // relations, allRelations
+    Object.assign(properties, await getRelations(url));
 
     return properties;
 }
@@ -257,9 +257,10 @@ export async function updateAnimeData(oldData) {
 }
 
 export async function getRelations(url) {
+    const id = getIdFromURL(url);
     if (!strictUrlRegex.test(url))
         url = await getAnisearchURL(url);
-    url += "/relations"
+    url += "/relations?show=overall"
     let document;
     try {
         let dom = await JSDOM.fromURL(url);
@@ -278,5 +279,18 @@ export async function getRelations(url) {
             type: titleElement.querySelector("span").innerHTML
         });
     });
-    return relations;
+    const dataGraph = JSON.parse(document.getElementById("flowchart").getAttribute("data-graph"));
+    let allRelations = [];
+    Object.keys(dataGraph.nodes.anime).forEach(relationKey => {
+        let relationId = relationKey.slice(1);
+        if (relationId === id)
+            return;
+        let title = dataGraph.nodes.anime[relationKey].title;
+        allRelations.push({
+            id: relationId,
+            name: title.slice(0, title.indexOf("<span>")),
+            cover: "https://cdn.anisearch.com/images/anime/cover/" + Math.floor(Number(relationId) / 1000) + "/" + relationId + "_600.webp"
+        });
+    });
+    return { relations: relations, allRelations: allRelations };
 }
