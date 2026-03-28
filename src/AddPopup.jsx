@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
-import {toast} from "react-toastify";
+import {axiosFinishToast} from "./ToastUtils.js";
 
 function AddPopup() {
     const { id } = useParams();
@@ -35,8 +35,7 @@ function AddPopup() {
 
     async function addAPI() {
         const data = Object.fromEntries(new FormData(document.getElementById("animeInfo")).entries());
-        const response = await axios.put("http://localhost:8080/api/add", { data: data, url: addUrl });
-        toast(typeof response.data === "string" ? response.data : JSON.stringify(response.data), { type: (response.status >= 200 && response.status < 300) ? "success" : "error" });
+        await axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: addUrl }), "success");
         setAddUrl("");
     }
 

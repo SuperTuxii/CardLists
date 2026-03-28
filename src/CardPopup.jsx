@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useNavigate, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
-import {toast} from "react-toastify";
+import {axiosFinishToast} from "./ToastUtils.js";
 
 
 function CardPopup() {
@@ -29,7 +29,7 @@ function CardPopup() {
               <h2 id="name">{item.name}</h2>
               <div className={"top-right-items"}>
                 <Link to={`/edit/${id}`}><button>Edit</button></Link>
-                <button onClick={() => axios.post("http://localhost:8080/api/update", {filter: {_id: id}}).then(response => toast(typeof response.data === "string" ? response.data : JSON.stringify(response.data), { type: (response.status >= 200 && response.status < 300) ? "info" : "error" }))}>Update</button>
+                <button onClick={() => axiosFinishToast(axios.post("http://localhost:8080/api/update", {filter: {_id: id}}), "info")}>Update</button>
               </div>
               <div className="horizontal">
                   <div className="table">
@@ -69,7 +69,7 @@ function CardPopup() {
                           <label>Owning</label>
                           <label>{item.ownStatus ?
                               item.filmId >= 0 ?
-                                  <Link to={`http://192.168.2.1/filme/filme.php?operation=view&pk0=${item.filmId}`}>{`${item.filmId} (${item.ownStatus.charAt(0).toUpperCase() + item.ownStatus.slice(1)})`}</Link>
+                              <Link to={`http://192.168.2.1/filme/filme.php?operation=view&pk0=${item.filmId}`} target={"_blank"}>{`${item.filmId} (${item.ownStatus.charAt(0).toUpperCase() + item.ownStatus.slice(1)})`}</Link>
                                   : <>{item.ownStatus.charAt(0).toUpperCase() + item.ownStatus.slice(1)}</> :
                               ""
                           }</label>

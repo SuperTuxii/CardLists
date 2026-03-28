@@ -142,7 +142,7 @@ app.post("/api/update", async (req, res) => {
                 }
             }
         }
-        let message = updates.acknowledged > 1 ? `${updates.acknowledged} entries updated` : updates.acknowledged > 0 ? `${updates.last.name} updated` : "Nothing updated";
+        let message = updates.acknowledged > 1 ? `${updates.acknowledged} entries updated` : updates.acknowledged > 0 ? `${updates.last.name} updated` : "Nothing to update";
         if (updates.not_acknowledged > 0) {
             message += ` (${updates.not_acknowledged} entries updatable, but not acknowledged)`;
         }
