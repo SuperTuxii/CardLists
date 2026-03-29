@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {Link} from "react-router";
 import axios from "axios";
 import './CardList.css';
+import {axiosToastIfError} from "./ToastUtils.js";
 
 const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)))?)/g;
 const propertyMap = {
@@ -62,7 +63,7 @@ function CardList() {
     }
 
     async function getDbAPI(params){
-        const response = await axios.post("http://localhost:8080/api/get", params);
+        const response = await axiosToastIfError(axios.post("http://localhost:8080/api/get", params));
         console.log(response.data);
         return response.data;
     }

@@ -2,7 +2,7 @@ import {Link, useNavigate, useParams} from "react-router";
 import './Popup.css';
 import axios from "axios";
 import {useEffect, useState} from "react";
-import {axiosFinishToast} from "./ToastUtils.js";
+import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
 
 function EditPopup() {
     const { id } = useParams();
@@ -10,7 +10,7 @@ function EditPopup() {
     const [data, setData] = useState({});
 
     async function getAPI(url){
-        const response = await axios.get("http://localhost:8080/api/get", { params: { url: url }});
+        const response = await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}));
         console.log(JSON.stringify(response.data, null, 2));
         return response.data;
     }

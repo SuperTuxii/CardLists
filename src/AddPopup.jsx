@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
-import {axiosFinishToast} from "./ToastUtils.js";
+import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
 
 function AddPopup() {
     const { id } = useParams();
@@ -11,7 +11,7 @@ function AddPopup() {
     const [data, setData] = useState({});
 
     async function getAPI(url){
-        const response = await axios.get("http://localhost:8080/api/get", { params: { url: url }});
+        const response = await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}));
         console.log(JSON.stringify(response.data, null, 2));
         setData(response.data);
         if ("status" in response.data)
@@ -22,7 +22,7 @@ function AddPopup() {
             let newRelations = [];
             for (let i in response.data.relations) {
                 let relation = response.data.relations[i];
-                const hasRelation = await axios.get("http://localhost:8080/api/has", { params: { url: relation.id }});
+                const hasRelation = await axiosToastIfError(axios.get("http://localhost:8080/api/has", { params: { url: relation.id }}));
                 if (!hasRelation.data && !relations.some(item => item.id === relation.id)) {
                     newRelations.push(relation);
                 }

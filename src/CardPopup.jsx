@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useNavigate, useParams} from "react-router";
 import axios from "axios";
 import './Popup.css';
-import {axiosFinishToast} from "./ToastUtils.js";
+import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
 
 
 function CardPopup() {
@@ -11,7 +11,7 @@ function CardPopup() {
     const [item, setItem] = useState({});
 
     async function getDbInfo(){
-        const response = await axios.post("http://localhost:8080/api/get", { filter: { _id: id } });
+        const response = await axiosToastIfError(axios.post("http://localhost:8080/api/get", { filter: { _id: id } }));
         console.log(response.data[0]);
         return response.data[0];
     }
@@ -26,11 +26,11 @@ function CardPopup() {
               <div id="overlay"></div>
           </Link>
           <div id="popup">
-              <h2 id="name">{item.name}</h2>
               <div className={"top-right-items"}>
-                <Link to={`/edit/${id}`}><button>Edit</button></Link>
-                <button onClick={() => axiosFinishToast(axios.post("http://localhost:8080/api/update", {filter: {_id: id}}), "info")}>Update</button>
+                  <Link to={`/edit/${id}`}><button>Edit</button></Link>
+                  <button onClick={() => axiosFinishToast(axios.post("http://localhost:8080/api/update", {filter: {_id: id}}), "info")}>Update</button>
               </div>
+              <h2 id="name">{item.name}</h2>
               <div className="horizontal">
                   <div className="table">
                       <div className="row">
