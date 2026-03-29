@@ -1,9 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
-const anisearchAPI = require("./anisearch_api");
-const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid} = require("./anisearch_api");
+const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid, getAnimeData} = require("./anisearch_api");
 const _ = require('lodash');
+const { setTimeout } = require("node:timers/promises");
 
 const app = express();
 const corsOptions = {
@@ -26,6 +26,10 @@ app.get("/api/get", async (req, res) => {
         try {
             req.query.url = await getAnisearchURL(req.query.url);
         } catch (e) {
+            if (e.startsWith("Too Many Requests")) {
+                res.status(429).send(e);
+                return;
+            }
             res.status(400).send(e);
             return;
         }
@@ -35,7 +39,7 @@ app.get("/api/get", async (req, res) => {
             if (data) {
                 data.fromDB = true;
             } else {
-                data = await anisearchAPI.getAnimeData(req.query.url);
+                data = await getAnimeData(req.query.url);
                 let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
                     .sort({_id: 1})
                     .project({_id: true, series: true, seriesPart: true, season: true})
@@ -65,6 +69,10 @@ app.get("/api/get", async (req, res) => {
             }
             res.json(data);
         } catch (e) {
+            if (e.startsWith("Too Many Requests")) {
+                res.status(429).send(e);
+                return;
+            }
             console.error(`Error occurred while trying to get anime data from url: ${e}`);
             res.status(500).send(`Error occurred while trying to get anime data from url: ${e}`);
         }
@@ -116,7 +124,22 @@ app.post("/api/update", async (req, res) => {
         const collection = mongoClient.db("cards_lists").collection("anime");
         const cursor = await collection.find("filter" in req.body ? req.body.filter : {});
         for await (const data of cursor) {
-            const newData = await updateAnimeData(data);
+            let updateTries = 0;
+            let newData;
+            while (!newData) {
+                if (updateTries > 10)
+                    throw "Updating failed after retrying 10 times";
+                updateTries++;
+                try {
+                    newData = await updateAnimeData(data);
+                } catch (e) {
+                    if (!e.startsWith("Too Many Requests"))
+                        throw e;
+                    if (!res.headersSent)
+                        res.status(202).send(`${e} Scheduled to retry after a delay.`);
+                    await setTimeout(15000);
+                }
+            }
             let relations = await collection.find({_id: {$in: newData.relations.map(relation => relation.id)}})
                 .sort({_id: 1})
                 .project({_id: true})
@@ -145,10 +168,15 @@ app.post("/api/update", async (req, res) => {
         if (updates.not_acknowledged > 0) {
             message += ` (${updates.not_acknowledged} entries updatable, but not acknowledged)`;
         }
-        res.status(200).send(message);
+        if (res.headersSent) {
+            console.info(message);
+        } else {
+            res.status(200).send(message);
+        }
     } catch (e) {
         console.error(`Error occurred while trying to update anime data: ${e}`);
-        res.status(500).send(`Error occurred while trying to update anime data: ${e}`);
+        if (!res.headersSent)
+            res.status(500).send(`Error occurred while trying to update anime data: ${e}`);
     }
 });
 
@@ -181,7 +209,7 @@ app.put("/api/add", async (req, res) => {
                 res.status(409).send("Anime Data already exists");
                 return;
             }
-            const data = await anisearchAPI.getAnimeData(req.body.url, req.body.data);
+            const data = await getAnimeData(req.body.url, req.body.data);
             let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
                 .sort({_id: 1})
                 .project({_id: true, series: true, seriesPart: true, season: true})
@@ -203,6 +231,10 @@ app.put("/api/add", async (req, res) => {
                 res.status(500).send("Insertion was not acknowledged");
             }
         } catch (e) {
+            if (e.startsWith("Too Many Requests")) {
+                res.status(429).send(e);
+                return;
+            }
             console.error(`Error occurred while trying to add anime ${req.body.url}: ${e}`);
             res.status(500).send(`Error occurred while trying to add anime ${req.body.url}: ${e}`);
         }

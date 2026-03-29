@@ -29,8 +29,26 @@ const userDataKeys = [
 ]
 
 const cacheRenewMinutes = 30;
+const requestPerMinuteMax = 25;
 let cache = {};
 let cacheTime = {};
+let requestCounter = {earliestTime: 0, latestTime: 0, amount: 0};
+// let requestCounter = {earliestTime: Date.now() + 86400000, latestTime: Date.now() + 86400000, amount: 30};
+
+function isRequestable() {
+    const currentTime = Date.now();
+    if ((currentTime - requestCounter.earliestTime) > 60000) {
+        requestCounter.earliestTime = currentTime;
+        requestCounter.latestTime = currentTime;
+        requestCounter.amount = 0;
+    }
+    if (requestCounter.amount >= requestPerMinuteMax) {
+        throw `Too Many Requests: Limit of ${requestPerMinuteMax} anisearch requests per minute exceeded!`
+    } else {
+        requestCounter.latestTime = currentTime;
+        requestCounter.amount++;
+    }
+}
 
 export function getIdFromURL(url) {
     if (url.startsWith("anisearch."))
@@ -56,6 +74,7 @@ export async function getAnisearchURL(url) {
 
     // Switch to the english (.com) website if not already the case
     if (!url.startsWith("https://www.anisearch.com")) {
+        isRequestable();
         try {
             let dom = await JSDOM.fromURL(url);
             url = dom.window.document.querySelector("head link[rel='alternate'][hreflang='en']").getAttribute("href");
@@ -86,10 +105,12 @@ export async function getAnimeData(url, userData = {}) {
     if (!isUserDataValid(userData))
         throw "The user data has the wrong format " + userDataKeys;
 
+    isRequestable();
     let document;
     try {
         let dom = await JSDOM.fromURL(url);
         document = dom.window.document;
+        url = document.querySelector("head link[rel='alternate'][hreflang='en']").getAttribute("href");
     } catch (e) {
         throw `Error while trying to get website: ${e}`;
     }
@@ -98,6 +119,8 @@ export async function getAnimeData(url, userData = {}) {
     let properties = {};
     // _id
     properties._id = getIdFromURL(scriptJson["@id"]);
+    // url
+    properties.url = url;
     // name
     properties.name = document.querySelector("meta[property='og:title']").getAttribute("content");
     if (!document.querySelector("div.title[lang='en']")) {
@@ -264,7 +287,7 @@ export async function getAnimeData(url, userData = {}) {
 }
 
 export async function updateAnimeData(oldData) {
-    return getAnimeData(oldData._id, Object.fromEntries(Object.entries(oldData).filter(([key]) => userDataKeys.includes(key))));
+    return getAnimeData("url" in oldData ? oldData.url : oldData._id, Object.fromEntries(Object.entries(oldData).filter(([key]) => userDataKeys.includes(key))));
 }
 
 export async function getRelations(url) {
@@ -272,6 +295,7 @@ export async function getRelations(url) {
     if (!strictUrlRegex.test(url))
         url = await getAnisearchURL(url);
     url += "/relations?show=overall"
+    isRequestable();
     let document;
     try {
         let dom = await JSDOM.fromURL(url);
