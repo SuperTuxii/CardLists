@@ -50,7 +50,6 @@ app.get("/api/get", async (req, res) => {
                 for (let relation of data.allRelations) {
                     relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
                 }
-                console.log(JSON.stringify(relations));
                 if (relations.length) {
                     let relation = relations.find((relation) => data.relations.find((relation2) => relation2.id === relation._id).type === "Prequel");
                     if (!relation) {

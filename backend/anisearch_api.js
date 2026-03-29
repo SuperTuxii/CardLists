@@ -1,7 +1,4 @@
 import { JSDOM } from "jsdom";
-// JSDOM.fromURL("https://www.anisearch.com/anime/8878,no-game-no-life").then(dom => {
-//     console.log(dom.window.document.getElementById("information").innerHTML);
-// });
 
 const generalUrlRegex = /^https:\/\/www\.anisearch\.[^/]+\/anime\/(\d+),?([^/]*)?$/
 const strictUrlRegex = /^https:\/\/www\.anisearch\.com\/anime\/(\d+),?([^/]*)?$/
@@ -30,6 +27,10 @@ const userDataKeys = [
     "ownStatus",
     "filmId"
 ]
+
+const cacheRenewMinutes = 30;
+let cache = {};
+let cacheTime = {};
 
 export function getIdFromURL(url) {
     if (url.startsWith("anisearch."))
@@ -72,6 +73,14 @@ export function isUserDataValid(userData) {
 }
 
 export async function getAnimeData(url, userData = {}) {
+    const id = getIdFromURL(url);
+    if (id in cache && id in cacheTime && (Date.now() - cacheTime[id]) / 60000 < cacheRenewMinutes) {
+        return cache[id];
+    }
+    if (id in cache)
+        delete cache[id];
+    if (id in cacheTime)
+        delete cacheTime[id];
     if (!strictUrlRegex.test(url))
         url = await getAnisearchURL(url);
     if (!isUserDataValid(userData))
@@ -249,6 +258,8 @@ export async function getAnimeData(url, userData = {}) {
     // relations, allRelations
     Object.assign(properties, await getRelations(url));
 
+    cache[id] = properties;
+    cacheTime[id] = Date.now();
     return properties;
 }
 
@@ -279,18 +290,20 @@ export async function getRelations(url) {
             type: titleElement.querySelector("span").innerHTML
         });
     });
-    const dataGraph = JSON.parse(document.getElementById("flowchart").getAttribute("data-graph"));
     let allRelations = [];
-    Object.keys(dataGraph.nodes.anime).forEach(relationKey => {
-        let relationId = relationKey.slice(1);
-        if (relationId === id)
-            return;
-        let title = dataGraph.nodes.anime[relationKey].title;
-        allRelations.push({
-            id: relationId,
-            name: title.slice(0, title.indexOf("<span>")),
-            cover: "https://cdn.anisearch.com/images/anime/cover/" + Math.floor(Number(relationId) / 1000) + "/" + relationId + "_600.webp"
+    if (document.getElementById("flowchart")) {
+        const dataGraph = JSON.parse(document.getElementById("flowchart").getAttribute("data-graph"));
+        Object.keys(dataGraph.nodes.anime).forEach(relationKey => {
+            let relationId = relationKey.slice(1);
+            if (relationId === id)
+                return;
+            let title = dataGraph.nodes.anime[relationKey].title;
+            allRelations.push({
+                id: relationId,
+                name: title.slice(0, title.indexOf("<span>")),
+                cover: "https://cdn.anisearch.com/images/anime/cover/" + Math.floor(Number(relationId) / 1000) + "/" + relationId + "_600.webp"
+            });
         });
-    });
+    }
     return { relations: relations, allRelations: allRelations };
 }
