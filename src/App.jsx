@@ -2,8 +2,9 @@ import {RouterProvider, createBrowserRouter, Link} from 'react-router';
 import Home from "./Home.jsx";
 import AddPopup from "./AddPopup.jsx";
 import CardPopup from "./CardPopup.jsx";
-import './App.css';
 import EditPopup from "./EditPopup.jsx";
+import ImportPopup from "./ImportPopup.jsx";
+import './App.css';
 
 function App() {
     let router = createBrowserRouter([
@@ -18,6 +19,10 @@ function App() {
                 {
                     path: "add/:id",
                     Component: AddPopup
+                },
+                {
+                    path: "import",
+                    Component: ImportPopup
                 },
                 {
                     path: "show/:id",

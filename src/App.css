@@ -41,6 +41,14 @@ nav a.right {
     text-align: center;
 }
 
+.vertical {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
 .flag {
     border-radius: 5px;
     margin: 2px;

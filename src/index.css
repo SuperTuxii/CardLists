@@ -44,7 +44,7 @@ h1 {
     line-height: 1.1;
 }
 
-button, input, select {
+button, input, select, input::file-selector-button {
     border-radius: 8px;
     border: 1px solid transparent;
     padding: 0.6em 1.2em;
@@ -55,12 +55,18 @@ button, input, select {
     cursor: pointer;
     transition: border-color 0.25s;
 }
-button:hover {
+button:hover, input::file-selector-button:hover {
     border-color: #646cff;
 }
 button:focus,
-button:focus-visible {
+button:focus-visible,
+input::file-selector-button:focus,
+input::file-selector-button:focus-visible {
     outline: 4px auto -webkit-focus-ring-color;
+}
+
+input::file-selector-button {
+    background-color: #141414;
 }
 
 progress {
