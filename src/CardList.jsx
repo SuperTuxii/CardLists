@@ -73,7 +73,10 @@ function CardList() {
             let tableData = [...fullTableData];
             for (let data of refreshData) {
                 let index = tableData.findIndex((data2) => data._id === data2._id);
-                tableData[index] = {...Object.assign(tableData[index], data)};
+                if (index === -1)
+                    tableData.push(data);
+                else
+                    tableData[index] = {...Object.assign(tableData[index], data)};
             }
             setFullTableData(tableData);
         }
