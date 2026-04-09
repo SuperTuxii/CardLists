@@ -92,8 +92,16 @@ export function isUserDataValid(userData) {
 
 export async function getAnimeData(url, userData = {}) {
     const id = getIdFromURL(url);
+    if (!isUserDataValid(userData))
+        throw "The user data has the wrong format " + userDataKeys;
     if (id in cache && id in cacheTime && (Date.now() - cacheTime[id]) / 60000 < cacheRenewMinutes) {
-        return cache[id];
+        let cacheProperties = cache[id];
+        if (!Array.isArray(cacheProperties.name))
+            delete userData.name;
+        for (const [key, value] of Object.entries(userData)) {
+            cacheProperties[key] = value;
+        }
+        return cacheProperties;
     }
     if (id in cache)
         delete cache[id];
@@ -101,8 +109,6 @@ export async function getAnimeData(url, userData = {}) {
         delete cacheTime[id];
     if (!strictUrlRegex.test(url))
         url = await getAnisearchURL(url);
-    if (!isUserDataValid(userData))
-        throw "The user data has the wrong format " + userDataKeys;
 
     isRequestable();
     let document;
@@ -123,36 +129,26 @@ export async function getAnimeData(url, userData = {}) {
     // name
     properties.name = document.querySelector("meta[property='og:title']").getAttribute("content");
     if (!document.querySelector("div.title[lang='en']")) {
-        if ("name" in userData) {
-            properties.name = userData.name;
-        } else {
-            properties.name = [];
-            document.querySelectorAll("div.title strong.f16").forEach((titleElement) => properties.name.push(titleElement.innerHTML));
-            if (document.querySelector("div.synonyms"))
-                document.querySelector("div.synonyms").childNodes.forEach((synonym) => {
-                    if (synonym.nodeType !== synonym.TEXT_NODE) {
-                        if (synonym.classList.contains("header"))
-                            return;
-                    }
-                    synonym = synonym.textContent.trim();
-                    if (!synonym)
+        properties.name = [];
+        document.querySelectorAll("div.title strong.f16").forEach((titleElement) => properties.name.push(titleElement.innerHTML));
+        if (document.querySelector("div.synonyms"))
+            document.querySelector("div.synonyms").childNodes.forEach((synonym) => {
+                if (synonym.nodeType !== synonym.TEXT_NODE) {
+                    if (synonym.classList.contains("header"))
                         return;
-                    if (synonym.startsWith(","))
-                        synonym = synonym.slice(1).trim();
-                    if (synonym.endsWith(","))
-                        synonym = synonym.slice(0, -1).trim();
-                    properties.name.push(synonym);
-                });
-        }
+                }
+                synonym = synonym.textContent.trim();
+                if (!synonym)
+                    return;
+                if (synonym.startsWith(","))
+                    synonym = synonym.slice(1).trim();
+                if (synonym.endsWith(","))
+                    synonym = synonym.slice(0, -1).trim();
+                properties.name.push(synonym);
+            });
     }
-    if ("name" in userData)
-        delete userData.name;
     // aliases
     properties.aliases = [];
-    // userData (series, seriesPart, season, status & timestamp, ownStatus & filmId)
-    for (const [key, value] of Object.entries(userData)) {
-        properties[key] = value;
-    }
     // timePerUnit & totalTime
     let typeDiv = informationList.children[0].querySelector("div.type");
     if (typeDiv.querySelector("i")) {
@@ -280,8 +276,15 @@ export async function getAnimeData(url, userData = {}) {
     // relations, allRelations
     Object.assign(properties, await getRelations(url));
 
-    cache[id] = properties;
+    cache[id] = {...properties};
     cacheTime[id] = Date.now();
+
+    // userData (name, series, seriesPart, season, status & timestamp, ownStatus & filmId)
+    if (!Array.isArray(properties.name))
+        delete userData.name;
+    for (const [key, value] of Object.entries(userData)) {
+        properties[key] = value;
+    }
     return properties;
 }
 
