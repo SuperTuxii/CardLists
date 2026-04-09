@@ -1,8 +1,8 @@
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {Link} from "react-router";
-import axios from "axios";
 import './CardList.css';
-import {axiosToastIfError} from "./ToastUtils.js";
+import {websocketToastIfError} from "./ToastUtils.js";
+import {WebsocketContext} from "./WebsocketContext.jsx";
 
 const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)))?)/g;
 const propertyMap = {
@@ -15,6 +15,7 @@ const propertyMap = {
 };
 
 function CardList() {
+    const socket = useContext(WebsocketContext);
     const [search, setSearch] = useState("");
     const [filters, setFilters] = useState({
         search: ["name"],
@@ -63,10 +64,24 @@ function CardList() {
     }
 
     async function getDbAPI(params){
-        const response = await axiosToastIfError(axios.post("http://localhost:8080/api/get", params));
-        console.log(response.data);
-        return response.data;
+        // return (await axiosToastIfError(axios.post("http://localhost:8080/api/get", params))).data;
+        return await websocketToastIfError(socket.emitWithAck("get", params));
     }
+
+    useEffect(() => {
+        function refreshInfo(refreshData) {
+            let tableData = [...fullTableData];
+            for (let data of refreshData) {
+                let index = tableData.findIndex((data2) => data._id === data2._id);
+                tableData[index] = {...Object.assign(tableData[index], data)};
+            }
+            setFullTableData(tableData);
+        }
+        socket.on("refresh", refreshInfo);
+        return () => {
+            socket.off("refresh", refreshInfo);
+        }
+    }, [fullTableData]);
 
     useEffect(() => {
         getDbAPI({

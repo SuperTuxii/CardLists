@@ -12,8 +12,7 @@ export function axiosPromiseToast(promise, loadingContent, responseType) {
             pauseOnHover: !(response.status >= 200 && response.status < 300)
         });
         return response;
-    })
-    .catch(reason => toast.update(toastId, {
+    }).catch(reason => toast.update(toastId, {
         render: reason,
         type: "error",
         isLoading: false,
@@ -50,6 +49,102 @@ export function axiosToastIfError(promise) {
                 }
             );
             throw response.data;
+        }
+        return response;
+    });
+}
+
+const websocketUpdateCallbacks = {};
+export function websocketUpdateCallback(toastId, removeAfter = false) {
+    if (!(toastId in websocketUpdateCallbacks))
+        websocketUpdateCallbacks[toastId] = (data) => {
+            toast.update(toastId, {
+                render: typeof data === "string" ? data : JSON.stringify(data)
+            });
+        };
+    try {
+        return websocketUpdateCallbacks[toastId];
+    } finally {
+        if (removeAfter)
+            delete websocketUpdateCallbacks[toastId];
+    }
+}
+
+export function websocketPromiseToast(promise, loadingContent, responseType, toastCreateCallback = undefined, toastFinalCallback = undefined) {
+    const toastId = toast.loading(loadingContent);
+    if (toastCreateCallback)
+        toastCreateCallback(toastId);
+    return promise.then(response => {
+        if (typeof response === "object" && "status" in response && "message" in response)
+            toast.update(toastId, {
+                render: typeof response.message === "string" ? response.message : JSON.stringify(response.message),
+                type: (response.status >= 200 && response.status < 300) ? responseType : "error",
+                isLoading: false,
+                autoClose: (response.status >= 200 && response.status < 300) ? 2500 : 5000,
+                closeOnClick: true,
+                pauseOnHover: !(response.status >= 200 && response.status < 300)
+            });
+        else
+            toast.update(toastId, {
+                render: typeof response === "string" ? response : JSON.stringify(response),
+                type: responseType,
+                isLoading: false,
+                autoClose: 2500,
+                closeOnClick: true,
+                pauseOnHover: false
+            });
+        return response;
+    }).catch(reason => toast.update(toastId, {
+        render: reason,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        closeOnClick: true
+    })).finally(() => {
+        if (toastFinalCallback)
+            toastFinalCallback(toastId);
+    });
+}
+
+export function websocketFinishToast(promise, responseType) {
+    return promise.then(response => {
+        if (typeof response === "object" && "status" in response && "message" in response)
+            toast(
+                typeof response.message === "string" ? response.message : JSON.stringify(response.message),
+                {
+                    type: (response.status >= 200 && response.status < 300) ? responseType : "error",
+                    autoClose: (response.status >= 200 && response.status < 300) ? 2500 : 5000,
+                    closeOnClick: true,
+                    pauseOnHover: !(response.status >= 200 && response.status < 300)
+                }
+            );
+        else
+            toast(
+                typeof response === "string" ? response : JSON.stringify(response),
+                {
+                    type: responseType,
+                    autoClose: 2500,
+                    closeOnClick: true,
+                    pauseOnHover: false
+                }
+            );
+        return response;
+    });
+}
+
+export function websocketToastIfError(promise) {
+    return promise.then(response => {
+        if (typeof response === "object" && "status" in response && "message" in response && !(response.status >= 200 && response.status < 300)) {
+            toast(
+                typeof response.message === "string" ? response.message : JSON.stringify(response.message),
+                {
+                    type: "error",
+                    autoClose: 5000,
+                    closeOnClick: true,
+                    pauseOnHover: true
+                }
+            );
+            throw response.message;
         }
         return response;
     });

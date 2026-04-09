@@ -1,12 +1,26 @@
-import {RouterProvider, createBrowserRouter, Link} from 'react-router';
+import {createBrowserRouter, Link, RouterProvider} from 'react-router';
 import Home from "./Home.jsx";
 import AddPopup from "./AddPopup.jsx";
 import CardPopup from "./CardPopup.jsx";
 import EditPopup from "./EditPopup.jsx";
 import ImportPopup from "./ImportPopup.jsx";
 import './App.css';
+import {useContext, useEffect} from "react";
+import {WebsocketContext} from "./WebsocketContext.jsx";
+
 
 function App() {
+    const socket = useContext(WebsocketContext);
+    useEffect(() => {
+        socket.on("connect",() => {
+            console.log("Connection")
+        });
+
+        return () => {
+            socket.off("connect");
+        }
+    }, []);
+
     let router = createBrowserRouter([
         {
             path: "/",

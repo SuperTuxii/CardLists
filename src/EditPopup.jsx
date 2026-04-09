@@ -1,23 +1,27 @@
 import {Link, useNavigate, useParams} from "react-router";
 import './Popup.css';
-import axios from "axios";
-import {useEffect, useState} from "react";
-import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
+import {useContext, useEffect, useState} from "react";
+import {websocketFinishToast, websocketToastIfError} from "./ToastUtils.js";
+import {WebsocketContext} from "./WebsocketContext.jsx";
 
 function EditPopup() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const socket = useContext(WebsocketContext);
     const [data, setData] = useState({});
 
-    async function getAPI(url){
-        const response = await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}));
-        console.log(JSON.stringify(response.data, null, 2));
-        return response.data;
+    async function getAPI(url) {
+        // const reponse = (await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}))).data;
+        const response = await websocketToastIfError(socket.emitWithAck("get-url", url));
+        if (!response.fromDB)
+            navigate(`/add/${id}`);
+        return response;
     }
 
-    async function editAPI() {
+    function editAPI() {
         const data = Object.fromEntries(new FormData(document.getElementById("animeInfo")).entries());
-        await axiosFinishToast(axios.post("http://localhost:8080/api/edit", { data: data, id: id }), "success");
+        // axiosFinishToast(axios.post("http://localhost:8080/api/edit", { data: data, id: id }), "success");
+        websocketFinishToast(socket.emitWithAck("edit", { data: data, id: id }), "success");
     }
 
     useEffect(() => {

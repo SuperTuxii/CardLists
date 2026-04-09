@@ -4,6 +4,8 @@ const { MongoClient } = require("mongodb");
 const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid, getAnimeData} = require("./anisearch_api");
 const _ = require('lodash');
 const { setTimeout } = require("node:timers/promises");
+const { createServer } = require("http");
+const {Server} = require("socket.io");
 
 const app = express();
 const corsOptions = {
@@ -21,25 +23,25 @@ try {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-app.get("/api/get", async (req, res) => {
-    if ("url" in req.query) {
+const httpServer = createServer(app);
+const wsServer = new Server(httpServer, {cors: corsOptions})
+
+async function get(params) {
+    if ("url" in params) {
         try {
-            req.query.url = await getAnisearchURL(req.query.url);
+            params.url = await getAnisearchURL(params.url);
         } catch (e) {
-            if (e.startsWith("Too Many Requests")) {
-                res.status(429).send(e);
-                return;
-            }
-            res.status(400).send(e);
-            return;
+            if (e.startsWith("Too Many Requests"))
+                throw { status: 429, message: e };
+            throw { status: 400, message: e };
         }
         try {
             const collection = mongoClient.db("cards_lists").collection("anime");
-            let data = await collection.findOne({_id: getIdFromURL(req.query.url)});
+            let data = await collection.findOne({_id: getIdFromURL(params.url)});
             if (data) {
                 data.fromDB = true;
             } else {
-                data = await getAnimeData(req.query.url);
+                data = await getAnimeData(params.url);
                 let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
                     .sort({_id: 1})
                     .project({_id: true, series: true, seriesPart: true, season: true})
@@ -67,63 +69,62 @@ app.get("/api/get", async (req, res) => {
                     data.series = allRelations[0].series;
                 }
             }
-            res.json(data);
+            return data;
         } catch (e) {
-            if (e.startsWith("Too Many Requests")) {
-                res.status(429).send(e);
-                return;
-            }
+            if (e.startsWith("Too Many Requests"))
+                throw { status: 429, message: e };
             console.error(`Error occurred while trying to get anime data from url: ${e}`);
-            res.status(500).send(`Error occurred while trying to get anime data from url: ${e}`);
+            throw { status: 500, message: `Error occurred while trying to get anime data from url: ${e}` };
         }
-    } else {
-        res.status(400).send("Invalid query parameters");
-    }
-});
-
-app.get("/api/has", async (req, res) => {
-    if ("url" in req.query) {
+    } else if ("filter" in params) {
+        const options = "options" in params ? params.options : {};
+        const sort = "sort" in params ? params.sort : { name: 1 };
+        const projection = "projection" in params ? params.projection : {};
         try {
             const collection = mongoClient.db("cards_lists").collection("anime");
-            res.json(await collection.findOne({_id: getIdFromURL(req.query.url)}) !== null);
-        } catch (e) {
-            console.error(`Error occurred while checking if anime data exists for url: ${e}`);
-            res.status(500).send(`Error occurred while checking if anime data exists for url: ${e}`);
-        }
-    } else {
-        res.status(400).send("Invalid query parameters");
-    }
-});
-
-app.post("/api/get", async (req, res) => {
-    if ("filter" in req.body) {
-        const options = "options" in req.body ? req.body.options : {};
-        const sort = "sort" in req.body ? req.body.sort : { name: 1 };
-        const projection = "projection" in req.body ? req.body.projection : {};
-        try {
-            const collection = mongoClient.db("cards_lists").collection("anime");
-            const cursor = await collection.find(req.body.filter, options)
+            const cursor = await collection.find(params.filter, options)
                 .sort(sort)
                 .project(projection);
-            if ("pageSize" in req.body && "page" in req.body) {
-                cursor.skip(req.body.page * req.body.pageSize).limit(req.body.pageSize);
+            if ("pageSize" in params && "page" in params) {
+                cursor.skip(params.page * params.pageSize).limit(params.pageSize);
             }
-            res.json(await cursor.toArray());
+            return await cursor.toArray();
         } catch (e) {
             console.error(`Error occurred while trying to get anime data from database: ${e}`);
-            res.status(500).send(`Error occurred while trying to get anime data from database: ${e}`);
+            throw { status: 500, message: `Error occurred while trying to get anime data from database: ${e}` };
         }
     } else {
-        res.status(400).send("Invalid body");
+        throw {status: 400, message: "Invalid get parameters"};
     }
-});
+}
 
-app.post("/api/update", async (req, res) => {
+async function has(params) {
+    if ("url" in params) {
+        try {
+            const collection = mongoClient.db("cards_lists").collection("anime");
+            return await collection.findOne({_id: getIdFromURL(params.url)}) !== null;
+        } catch (e) {
+            console.error(`Error occurred while checking if anime data exists for url: ${e}`);
+            throw { status: 500, message: `Error occurred while checking if anime data exists for url: ${e}` };
+        }
+    } else {
+        throw { status: 400, message: "Invalid has parameters" };
+    }
+}
+
+let updating = false;
+async function update(params, waitCallback = undefined, updateProgress = undefined) {
+    if (updating)
+        throw { status: 503, message: `Update is already in process` };
+    updating = true;
     try {
-        let updates = {acknowledged: 0, not_acknowledged: 0, last: {}};
+        let updates = {acknowledged: 0, not_acknowledged: 0, number: 0, updates: []};
         const collection = mongoClient.db("cards_lists").collection("anime");
-        const cursor = await collection.find("filter" in req.body ? req.body.filter : {});
+        const cursor = await collection.find("filter" in params ? params.filter : {});
+        const count = await collection.countDocuments("filter" in params ? params.filter : {});
         for await (const data of cursor) {
+            if (updateProgress)
+                updateProgress(`${updates.number}/${count}: Updating "${data.name}"`);
             let updateTries = 0;
             let newData;
             while (!newData) {
@@ -135,8 +136,8 @@ app.post("/api/update", async (req, res) => {
                 } catch (e) {
                     if (!e.startsWith("Too Many Requests"))
                         throw e;
-                    if (!res.headersSent)
-                        res.status(202).send(`${e} Scheduled to retry after a delay.`);
+                    if (waitCallback)
+                        waitCallback(e, `${updates.number}/${count}`);
                     await setTimeout(15000);
                 }
             }
@@ -158,58 +159,55 @@ app.post("/api/update", async (req, res) => {
                 const result = await collection.replaceOne({_id: data._id}, newData);
                 if (result.acknowledged) {
                     updates.acknowledged++;
-                    updates.last = newData;
+                    updates.updates.push(newData);
                 } else {
                     updates.not_acknowledged++;
                 }
             }
+            updates.number++;
         }
-        let message = updates.acknowledged > 1 ? `${updates.acknowledged} entries updated` : updates.acknowledged > 0 ? `${updates.last.name} updated` : "Nothing to update";
+        let message = updates.acknowledged > 1 ? `${updates.acknowledged} entries updated` : updates.acknowledged > 0 ? `${updates.updates[0].name} updated` : "Nothing to update";
         if (updates.not_acknowledged > 0) {
             message += ` (${updates.not_acknowledged} entries updatable, but not acknowledged)`;
         }
-        if (res.headersSent) {
-            console.info(message);
-        } else {
-            res.status(200).send(message);
-        }
+        wsServer.emit("refresh", updates.updates);
+        return message;
     } catch (e) {
         console.error(`Error occurred while trying to update anime data: ${e}`);
-        if (!res.headersSent)
-            res.status(500).send(`Error occurred while trying to update anime data: ${e}`);
+        throw { status: 500, message: `Error occurred while trying to update anime data: ${e}` };
+    } finally {
+        updating = false;
     }
-});
+}
 
-app.post("/api/edit", async (req, res) => {
-    console.log(req.body);
-    if ("id" in req.body && "data" in req.body && isUserDataValid(req.body.data)) {
+async function edit(params) {
+    if ("id" in params && "data" in params && isUserDataValid(params.data)) {
         try {
             const collection = mongoClient.db("cards_lists").collection("anime");
-            const result = await collection.updateOne({ _id: req.body.id }, { $set: req.body.data}, { upsert: false });
+            const result = await collection.updateOne({ _id: params.id }, { $set: params.data}, { upsert: false });
             if (result.acknowledged) {
-                res.status(200).send("Changes were successfully saved");
+                wsServer.emit("refresh", [Object.assign({_id: params.id}, params.data)]);
+                return "Changes were successfully saved";
             } else {
-                res.status(500).send("Update was not acknowledged");
+                throw "Update was not acknowledged";
             }
         } catch (e) {
-            console.error(`Error occurred while trying to edit anime ${req.body.id}: ${e}`);
-            res.status(500).send(`Error occurred while trying to edit anime ${req.body.id}: ${e}`);
+            console.error(`Error occurred while trying to edit anime ${params.id}: ${e}`);
+            throw { status: 500, message: `Error occurred while trying to edit anime ${params.id}: ${e}` };
         }
     } else {
-        res.status(400).send("Incorrect body format");
+        throw { status: 400, message: "Incorrect edit parameters" };
     }
-})
+}
 
-app.put("/api/add", async (req, res) => {
-    console.log(JSON.stringify(req.body));
-    if ("url" in req.body && "data" in req.body) {
+async function add(params) {
+    if ("url" in params && "data" in params) {
         try {
             const collection = mongoClient.db("cards_lists").collection("anime");
-            if (await collection.findOne({_id: getIdFromURL(req.body.url)})) {
-                res.status(409).send("Anime Data already exists");
-                return;
+            if (await collection.findOne({_id: getIdFromURL(params.url)})) {
+                throw { status: 409, message: "Anime Data already exists" };
             }
-            const data = await getAnimeData(req.body.url, req.body.data);
+            const data = await getAnimeData(params.url, params.data);
             let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
                 .sort({_id: 1})
                 .project({_id: true, series: true, seriesPart: true, season: true})
@@ -226,23 +224,128 @@ app.put("/api/add", async (req, res) => {
             }
             const result = await collection.insertOne(data);
             if (result.acknowledged) {
-                res.status(201).send("Anime was successfully added");
+                wsServer.emit("refresh", [data]);
+                return "Anime was successfully added";
             } else {
-                res.status(500).send("Insertion was not acknowledged");
+                throw "Insertion was not acknowledged";
             }
         } catch (e) {
-            if (e.startsWith("Too Many Requests")) {
-                res.status(429).send(e);
-                return;
-            }
-            console.error(`Error occurred while trying to add anime ${req.body.url}: ${e}`);
-            res.status(500).send(`Error occurred while trying to add anime ${req.body.url}: ${e}`);
+            if ("status" in e && "message" in e)
+                throw e;
+            if (e.startsWith("Too Many Requests"))
+                throw { status: 429, message: e };
+            console.error(`Error occurred while trying to add anime ${params.url}: ${e}`);
+            throw { status: 500, message: `Error occurred while trying to add anime ${params.url}: ${e}` };
         }
     } else {
-        res.status(400).send("Incorrect body format");
+        throw { status: 400, message: "Incorrect body format" };
     }
+}
+
+wsServer.on("connection", (socket) => {
+    console.log("User connected: ", socket.id);
+    socket.on("disconnect", (reason) => {
+        console.log(`User ${socket.id} disconnected. Reason: ${reason}`);
+    });
+
+    socket.on("get", (data, callback) => {
+        get(data).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    });
+    socket.on("get-url", (data, callback) => {
+        get({ url: data }).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    });
+    socket.on("get-db", (data, callback) => {
+        get({ filter: {_id: getIdFromURL(data)} }).then(
+            (result) => callback(result[0]),
+            (e) => callback(e)
+        );
+    });
+    socket.on("has", (data, callback) => {
+        has({ url: data }).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    });
+    socket.on("update", (data, callback) => {
+        update(data ? { filter: data } : {},
+            (e, updates) => socket.emit("updateProgress", `${updates}: ${e}`),
+            (updateProgress) => socket.emit("updateProgress", updateProgress)
+        ).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    });
+    socket.on("edit", (data, callback) => {
+        edit(data).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    });
+    socket.on("add", (data, callback) => {
+        add(data).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    });
 });
 
-app.listen(8080, () => {
+app.get("/api/get", (req, res) => {
+    get(req.query).then(
+        (result) => res.json(result),
+        (e) => res.status(e.status).send(e.message)
+    );
+});
+
+app.get("/api/has", (req, res) => {
+    has(req.query).then(
+        (result) => res.json(result),
+        (e) => res.status(e.status).send(e.message)
+    );
+});
+
+app.post("/api/get", (req, res) => {
+    get(req.body).then(
+        (result) => res.json(result),
+        (e) => res.status(e.status).send(e.message)
+    );
+});
+
+app.post("/api/update", (req, res) => {
+    update(req.body, (e) => {
+        if (!res.headersSent)
+            res.status(202).send(`${e} Scheduled to retry after a delay.`)
+    }).then((result) => {
+        if (res.headersSent) {
+            console.info(result);
+        } else {
+            res.status(200).send(result);
+        }
+    }, (e) => {
+        if (!res.headersSent)
+            res.status(e.status).send(e.message);
+    });
+});
+
+app.post("/api/edit", (req, res) => {
+    edit(req.body).then(
+        (result) => res.status(200).send(result),
+        (e) => res.status(e.status).send(e.message)
+    );
+})
+
+app.put("/api/add", (req, res) => {
+    add(req.body).then(
+        (result) => res.status(201).send(result),
+        (e) => res.status(e.status).send(e.message)
+    );
+});
+
+httpServer.listen(8080, () => {
     console.log("Server started on port 8080");
 });

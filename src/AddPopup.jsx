@@ -1,28 +1,30 @@
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {Link, useParams} from "react-router";
-import axios from "axios";
 import './Popup.css';
-import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
+import {websocketFinishToast, websocketToastIfError} from "./ToastUtils.js";
+import {WebsocketContext} from "./WebsocketContext.jsx";
 
 function AddPopup() {
     const { id } = useParams();
+    const socket = useContext(WebsocketContext);
     const [addUrl, setAddUrl] = useState("");
     const [relations, setRelations] = useState([]);
     const [data, setData] = useState({});
 
-    async function getAPI(url){
-        const response = await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}));
-        console.log(JSON.stringify(response.data, null, 2));
-        setData(response.data);
-        if ("status" in response.data)
-            document.getElementById("status").value = response.data.status;
-        if ("ownStatus" in response.data)
-            document.getElementById("ownStatus").value = response.data.ownStatus;
-        if (response.data.relations) {
+    async function getAPI(url) {
+        // const response = (await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}))).data;
+        const response = await websocketToastIfError(socket.emitWithAck("get-url", url));
+        setData(response);
+        if ("status" in response)
+            document.getElementById("status").value = response.status;
+        if ("ownStatus" in response)
+            document.getElementById("ownStatus").value = response.ownStatus;
+        if (response.relations) {
             let newRelations = [];
-            for (let i in response.data.relations) {
-                let relation = response.data.relations[i];
-                const hasRelation = await axiosToastIfError(axios.get("http://localhost:8080/api/has", { params: { url: relation.id }}));
+            for (let i in response.relations) {
+                let relation = response.relations[i];
+                // const hasRelation = await axiosToastIfError(axios.get("http://localhost:8080/api/has", { params: { url: relation.id }}));
+                const hasRelation = await websocketToastIfError(socket.emitWithAck("has", relation.id));
                 if (!hasRelation.data && !relations.some(item => item.id === relation.id)) {
                     newRelations.push(relation);
                 }
@@ -35,7 +37,8 @@ function AddPopup() {
 
     async function addAPI() {
         const data = Object.fromEntries(new FormData(document.getElementById("animeInfo")).entries());
-        await axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: addUrl }), "success");
+        // await axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: addUrl }), "success");
+        await websocketFinishToast(socket.emitWithAck("add", { data: data, url: addUrl }), "success");
         setAddUrl("");
     }
 

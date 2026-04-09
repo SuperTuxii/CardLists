@@ -1,18 +1,21 @@
-import axios from "axios";
-import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
+import {websocketFinishToast, websocketToastIfError} from "./ToastUtils.js";
 import {Link} from "react-router";
-import {useState} from "react";
+import {useContext, useState} from "react";
+import {WebsocketContext} from "./WebsocketContext.jsx";
 
 
 function ImportPopup() {
+    const socket = useContext(WebsocketContext);
     const [fileInfos, setFileInfos] = useState([]);
 
     async function getAPI(url){
-        return (await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}))).data;
+        // return (await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}))).data;
+        return await websocketToastIfError(socket.emitWithAck("get-url", url));
     }
 
-    async function addAPI(data, url) {
-        await axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: url }), "success");
+    function addAPI(data, url) {
+        // axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: url }), "success");
+        websocketFinishToast(socket.emitWithAck("add", { data: data, url: url }), "success");
     }
 
     return (

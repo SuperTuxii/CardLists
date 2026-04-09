@@ -1,24 +1,49 @@
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {Link, useNavigate, useParams} from "react-router";
-import axios from "axios";
 import './Popup.css';
-import {axiosFinishToast, axiosToastIfError} from "./ToastUtils.js";
+import {websocketPromiseToast, websocketToastIfError, websocketUpdateCallback} from "./ToastUtils.js";
+import {WebsocketContext} from "./WebsocketContext.jsx";
 
 
 function CardPopup() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const socket = useContext(WebsocketContext);
     const [item, setItem] = useState({});
 
-    async function getDbInfo(){
-        const response = await axiosToastIfError(axios.post("http://localhost:8080/api/get", { filter: { _id: id } }));
-        console.log(response.data[0]);
-        return response.data[0];
+    async function getDbInfo() {
+        // return (await axiosToastIfError(axios.post("http://localhost:8080/api/get", { filter: { _id: id } }))).data[0];
+        return await websocketToastIfError(socket.emitWithAck("get-db", id));
+    }
+
+    function updateInfo() {
+        // axiosFinishToast(axios.post("http://localhost:8080/api/update", {filter: {_id: id}}), "info");
+        // websocketFinishToast(socket.emitWithAck("update", { _id: id }), "info");
+        websocketPromiseToast(
+            socket.emitWithAck("update", { _id: id }),
+            `Updating ${item.name}`,
+            "info",
+            (toastId) => socket.on("updateProgress", websocketUpdateCallback(toastId)),
+            (toastId) => socket.off("updateProgress", websocketUpdateCallback(toastId, true))
+        );
     }
 
     useEffect(() => {
         getDbInfo().then(setItem);
     }, [id]);
+
+    useEffect(() => {
+        function refreshInfo(refreshData) {
+            for (let data of refreshData) {
+                if (data._id === item._id)
+                    setItem({...Object.assign(item, data)});
+            }
+        }
+        socket.on("refresh", refreshInfo);
+        return () => {
+            socket.off("refresh", refreshInfo);
+        }
+    }, [item]);
 
     return (
       <>
@@ -28,7 +53,7 @@ function CardPopup() {
           <div id="popup">
               <div className={"top-right-items"}>
                   <Link to={`/edit/${id}`}><button>Edit</button></Link>
-                  <button onClick={() => axiosFinishToast(axios.post("http://localhost:8080/api/update", {filter: {_id: id}}), "info")}>Update</button>
+                  <button onClick={updateInfo}>Update</button>
               </div>
               <h2 id="name">{item.name}</h2>
               <div className="horizontal">

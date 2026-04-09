@@ -33,7 +33,6 @@ const requestPerMinuteMax = 25;
 let cache = {};
 let cacheTime = {};
 let requestCounter = {earliestTime: 0, latestTime: 0, amount: 0};
-// let requestCounter = {earliestTime: Date.now() + 86400000, latestTime: Date.now() + 86400000, amount: 30};
 
 function isRequestable() {
     const currentTime = Date.now();
