@@ -132,17 +132,17 @@ export function websocketFinishToast(promise, responseType) {
     });
 }
 
-export function websocketToastIfError(promise) {
+export function websocketToastIfError(promise, overrideOptions = {}) {
     return promise.then(response => {
         if (typeof response === "object" && "status" in response && "message" in response && !(response.status >= 200 && response.status < 300)) {
             toast(
                 typeof response.message === "string" ? response.message : JSON.stringify(response.message),
-                {
+                Object.assign({
                     type: "error",
                     autoClose: 5000,
                     closeOnClick: true,
                     pauseOnHover: true
-                }
+                }, overrideOptions)
             );
             throw response.message;
         }

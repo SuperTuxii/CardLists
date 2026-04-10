@@ -3,6 +3,7 @@ import {Link} from "react-router";
 import {useContext, useState} from "react";
 import {WebsocketContext} from "./WebsocketContext.jsx";
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function ImportPopup() {
     const socket = useContext(WebsocketContext);
@@ -11,7 +12,16 @@ function ImportPopup() {
 
     async function getAPI(url){
         // return (await axiosToastIfError(axios.get("http://localhost:8080/api/get", { params: { url: url }}))).data;
-        return await websocketToastIfError(socket.emitWithAck("get-url", url));
+        for (let i = 0; i < 5; i++) {
+            try {
+                return await websocketToastIfError(socket.emitWithAck("get-url", url), {autoClose: 15000, pauseOnHover: false, pauseOnFocusLoss: false});
+            } catch (e) {
+                if (!e.startsWith("Too Many Requests"))
+                    throw e;
+                await delay(15000);
+            }
+        }
+        throw "Getting data failed after retrying 5 times";
     }
 
     function addAPI(data, url) {
@@ -39,7 +49,10 @@ function ImportPopup() {
                             });
                         });
 
+                        document.getElementById("importButton").disabled = true;
+                        document.getElementById("statusInfo").innerText = "Reading Files..."
                         for (const info of await Promise.all(filePromises)) {
+                            document.getElementById("statusInfo").innerText = `Parsing & Checking Files... (${newFileData.length}/${e.target.files.length})`
                             if (info.file.type === "text/markdown") {
                                 const data = {name: info.file.name.slice(0, info.file.name.lastIndexOf("."))};
                                 info.result = info.result.slice(info.result.indexOf("---") + 4, info.result.indexOf("---", info.result.indexOf("---") + 3));
@@ -94,13 +107,19 @@ function ImportPopup() {
                         }
                         setFileInfos(newFileInfos);
                         setFileData(newFileData);
+                        document.getElementById("importButton").disabled = false;
+                        document.getElementById("statusInfo").innerText = "Ready to Import"
                     }} />
+                    <p id={"statusInfo"}></p>
                     <div>{fileInfos.map((fileInfo, index) => <p key={index}>{fileInfo}</p>)}</div>
-                    <button onClick={() => {
-                        for (let fileDatum of fileData) {
-                            addAPI(fileDatum.data, fileDatum.url);
+                    <button id={"importButton"} onClick={() => {
+                        for (let i = 0; i < fileData.length; i++) {
+                            document.getElementById("statusInfo").innerText = `Importing... (${i}/${fileData.length})`
+                            addAPI(fileData[i].data, fileData[i].url);
                         }
-                    }}>Import Anime</button>
+                        document.getElementById("importButton").disabled = true;
+                        document.getElementById("statusInfo").innerText = "Import finished"
+                    }} disabled>Import Anime</button>
                 </div>
             </div>
         </>
