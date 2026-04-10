@@ -28,39 +28,44 @@ function CardList() {
     const [cards, setCards] = useState(["aliases", "series", "time", "progress"]);
 
     function doFilterAndSearch(data, search, filters) {
-        const propertySpecifiers = [];
-        (search.match(propertySpecifierRegex) ?? []).map(s => s.trim()).forEach(specifier => {
-            const property = specifier.replace(propertySpecifierRegex, "$1");
-            propertySpecifiers.push([property in propertyMap ? propertyMap[property] : property, new RegExp(specifier.replace(propertySpecifierRegex, "$2").replace(/^"|"$/g, ""), "i")]);
-        });
-        search = search.replace(propertySpecifierRegex, "");
+        try {
+            const propertySpecifiers = [];
+            (search.match(propertySpecifierRegex) ?? []).map(s => s.trim()).forEach(specifier => {
+                const property = specifier.replace(propertySpecifierRegex, "$1");
+                propertySpecifiers.push([property in propertyMap ? propertyMap[property] : property, new RegExp(specifier.replace(propertySpecifierRegex, "$2").replace(/^"|"$/g, ""), "i")]);
+            });
+            search = search.replace(propertySpecifierRegex, "");
 
-        const searchRegex = new RegExp(search, "i");
-        data = data
-            .filter(data => {
-                if (filters.status.length && !filters.status.includes(data.status))
-                    return false;
-                if (filters.publishStatus.length && !filters.publishStatus.includes(data.publishStatus))
-                    return false;
-                if (filters.ownStatus.length && !filters.ownStatus.includes(data.ownStatus))
-                    return false;
-                for (let i = 0; i < propertySpecifiers.length; i++) {
-                    const [property, specifier] = propertySpecifiers.at(i);
-                    if (Array.isArray(data[property])) {
-                        if (data[property].length === 0)
-                            return false;
-                        if (typeof data[property][0] === "string" && !data[property].some(s => specifier.test(s)))
-                            return false;
-                        else if (typeof data[property][0] === "object" && !data[property].some(o => specifier.test(o.name)))
-                            return false;
-                    } else if (!specifier.test(data[property])) {
+            const searchRegex = new RegExp(search, "i");
+            data = data
+                .filter(data => {
+                    if (filters.status.length && !filters.status.includes(data.status))
                         return false;
+                    if (filters.publishStatus.length && !filters.publishStatus.includes(data.publishStatus))
+                        return false;
+                    if (filters.ownStatus.length && !filters.ownStatus.includes(data.ownStatus))
+                        return false;
+                    for (let i = 0; i < propertySpecifiers.length; i++) {
+                        const [property, specifier] = propertySpecifiers.at(i);
+                        if (Array.isArray(data[property])) {
+                            if (data[property].length === 0)
+                                return false;
+                            if (typeof data[property][0] === "string" && !data[property].some(s => specifier.test(s)))
+                                return false;
+                            else if (typeof data[property][0] === "object" && !data[property].some(o => specifier.test(o.name)))
+                                return false;
+                        } else if (!specifier.test(data[property])) {
+                            return false;
+                        }
                     }
-                }
-                return true;
-            })
-            .filter(data => filters.search.some(filter => searchRegex.test(data[filter])));
-        return data;
+                    return true;
+                })
+                .filter(data => filters.search.some(filter => searchRegex.test(data[filter])));
+            return data;
+        } catch (e) {
+            console.error(e);
+            return data;
+        }
     }
 
     async function getDbAPI(params){
