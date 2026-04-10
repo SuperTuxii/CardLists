@@ -20,12 +20,15 @@ function CardPopup() {
         // axiosFinishToast(axios.post("http://localhost:8080/api/update", {filter: {_id: id}}), "info");
         // websocketFinishToast(socket.emitWithAck("update", { _id: id }), "info");
         websocketPromiseToast(
-            socket.emitWithAck("update", { _id: id }),
+            new Promise((resolve) => {
+                socket.emit("update", { _id: id });
+                socket.once("updateFinished", resolve);
+            }),
             `Updating ${item.name}`,
             "info",
             (toastId) => socket.on("updateProgress", websocketUpdateCallback(toastId)),
             (toastId) => socket.off("updateProgress", websocketUpdateCallback(toastId, true))
-        );
+        )
     }
 
     useEffect(() => {

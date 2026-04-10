@@ -61,6 +61,17 @@ export function websocketUpdateCallback(toastId, removeAfter = false) {
             toast.update(toastId, {
                 render: typeof data === "string" ? data : JSON.stringify(data)
             });
+            if (data === "Update is already in process") {
+                toast(
+                    data,
+                    {
+                        type: "error",
+                        autoClose: 5000,
+                        closeOnClick: true,
+                        pauseOnHover: true
+                    }
+                )
+            }
         };
     try {
         return websocketUpdateCallbacks[toastId];

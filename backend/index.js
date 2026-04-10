@@ -115,7 +115,7 @@ async function has(params) {
 let updating = false;
 async function update(params, waitCallback = undefined, updateProgress = undefined) {
     if (updating)
-        throw { status: 503, message: `Update is already in process` };
+        throw { status: 503, message: "Update is already in process" };
     updating = true;
     try {
         let updates = {acknowledged: 0, not_acknowledged: 0, number: 0, updates: []};
@@ -272,13 +272,18 @@ wsServer.on("connection", (socket) => {
             (e) => callback(e)
         );
     });
-    socket.on("update", (data, callback) => {
+    socket.on("update", (data) => {
         update(data ? { filter: data } : {},
-            (e, updates) => socket.emit("updateProgress", `${updates}: ${e}`),
-            (updateProgress) => socket.emit("updateProgress", updateProgress)
+            (e, updates) => wsServer.emit("updateProgress", `${updates}: ${e}`),
+            (updateProgress) => wsServer.emit("updateProgress", updateProgress)
         ).then(
-            (result) => callback(result),
-            (e) => callback(e)
+            (result) => wsServer.emit("updateFinished", result),
+            (e) => {
+                if (e.status === 503 && e.message === "Update is already in process")
+                    socket.emit("updateProgress", e.message);
+                else
+                    wsServer.emit("updateFinished", e);
+            }
         );
     });
     socket.on("edit", (data, callback) => {

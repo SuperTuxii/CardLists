@@ -21,12 +21,15 @@ function Home() {
                 <Link to={location.pathname} className={"right"} onClick={() => {
                     // axiosPromiseToast(axios.post("http://localhost:8080/api/update", {}), "Updating All", "info")
                     websocketPromiseToast(
-                        socket.emitWithAck("update", {}),
+                        new Promise((resolve) => {
+                            socket.emit("update", {});
+                            socket.once("updateFinished", resolve);
+                        }),
                         "Updating All",
                         "info",
                         (toastId) => socket.on("updateProgress", websocketUpdateCallback(toastId)),
                         (toastId) => socket.off("updateProgress", websocketUpdateCallback(toastId, true))
-                    );
+                    )
                 }}>Update All</Link>
             </nav>
             <CardList />
