@@ -9,6 +9,7 @@ function AddPopup() {
     const socket = useContext(WebsocketContext);
     const [addUrl, setAddUrl] = useState("");
     const [relations, setRelations] = useState([]);
+    const [recommendations, setRecommendations] = useState({});
     const [data, setData] = useState({});
 
     async function getAPI(url) {
@@ -23,9 +24,7 @@ function AddPopup() {
             let newRelations = [];
             for (let i in response.relations) {
                 let relation = response.relations[i];
-                // const hasRelation = await axiosToastIfError(axios.get("http://localhost:8080/api/has", { params: { url: relation.id }}));
-                const hasRelation = await websocketToastIfError(socket.emitWithAck("has", relation.id));
-                if (!hasRelation.data && !relations.some(item => item.id === relation.id)) {
+                if (!relation.inDB && !relations.some(item => item.id === relation.id)) {
                     newRelations.push(relation);
                 }
             }
@@ -40,6 +39,27 @@ function AddPopup() {
         // await axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: addUrl }), "success");
         await websocketFinishToast(socket.emitWithAck("add", { data: data, url: addUrl }), "success");
         setAddUrl("");
+    }
+
+    async function generateRecommendations() {
+        const data = await websocketToastIfError(socket.emitWithAck("get", {
+            filter: {allRelations: {$ne: []}},
+            projection: {_id: 1, series: 1, allRelations: 1}
+        }));
+        console.log(data);
+        let newRecommendations = {};
+        for (let datum of data) {
+            if (datum.allRelations.some((relation) => relation.id in newRecommendations))
+                continue;
+            newRecommendations[datum._id] = {
+                series: datum.series,
+                relations: datum.allRelations.filter((relation) => !relation.inDB)
+            };
+            if (!newRecommendations[datum._id].relations.length)
+                delete newRecommendations[datum._id];
+        }
+        console.log(newRecommendations)
+        return newRecommendations;
     }
 
     useEffect(() => {
@@ -67,6 +87,14 @@ function AddPopup() {
                 <div id="overlay"></div>
             </Link>
             <div id="popup">
+                <div className={"top-right-items"}>
+                    <button onClick={() => {
+                        if (Object.keys(recommendations).length)
+                            setRecommendations({});
+                        else
+                            generateRecommendations().then(setRecommendations);
+                    }}>Recommendations</button>
+                </div>
                 <h2>Add Anime</h2>
                 <p>Anisearch URL:</p>
                 <input className="fill" onChange={e => setAddUrl(e.target.value)}></input>
@@ -161,6 +189,19 @@ function AddPopup() {
                         </li>
                     ))}
                 </ul>
+                {Object.entries(recommendations).map(([id, info]) => (
+                    <>
+                        <p>{info.series}</p>
+                        <ul className={"cover-list"}>
+                            {info.relations.map(relation => (
+                                <li key={relation.id} onClick={() => setAddUrl(id)}>
+                                    <img src={relation.cover} alt={"Cover of an anime that is recommended"}/>
+                                    <span>{relation.name}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </>
+                ))}
             </div>
         </>
     )

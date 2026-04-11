@@ -1,6 +1,6 @@
 import {websocketFinishToast, websocketToastIfError} from "./ToastUtils.js";
 import {Link} from "react-router";
-import {useContext, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {WebsocketContext} from "./WebsocketContext.jsx";
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -28,6 +28,10 @@ function ImportPopup() {
         // axiosFinishToast(axios.put("http://localhost:8080/api/add", { data: data, url: url }), "success");
         websocketFinishToast(socket.emitWithAck("add", { data: data, url: url }), "success");
     }
+
+    useEffect(() => {
+        document.getElementById("importButton").disabled = true;
+    }, []);
 
     return (
         <>
@@ -119,7 +123,7 @@ function ImportPopup() {
                         }
                         document.getElementById("importButton").disabled = true;
                         document.getElementById("statusInfo").innerText = "Import finished"
-                    }} disabled>Import Anime</button>
+                    }}>Import Anime</button>
                 </div>
             </div>
         </>

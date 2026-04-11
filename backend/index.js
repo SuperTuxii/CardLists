@@ -238,7 +238,7 @@ async function add(params) {
             throw { status: 500, message: `Error occurred while trying to add anime ${params.url}: ${e}` };
         }
     } else {
-        throw { status: 400, message: "Incorrect body format" };
+        throw { status: 400, message: "Incorrect add parameters" };
     }
 }
 
