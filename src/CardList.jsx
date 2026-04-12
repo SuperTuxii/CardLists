@@ -60,7 +60,14 @@ function CardList() {
                     }
                     return true;
                 })
-                .filter(data => filters.search.some(filter => searchRegex.test(data[filter])));
+                .filter(data => filters.search.some(filter => searchRegex.test(data[filter])))
+                .sort((data1, data2) => {
+                    if (data1.pinned && !data2.pinned)
+                        return -1;
+                    if (!data1.pinned && data2.pinned)
+                        return 1;
+                    return data1.name.localeCompare(data2.name);
+                });
             return data;
         } catch (e) {
             console.error(e);

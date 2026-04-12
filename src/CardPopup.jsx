@@ -31,6 +31,10 @@ function CardPopup() {
         )
     }
 
+    function setPinned(isPinned) {
+        socket.emitWithAck("edit", { data: { pinned: isPinned }, id: id });
+    }
+
     useEffect(() => {
         getDbInfo().then(setItem);
     }, [id]);
@@ -54,6 +58,9 @@ function CardPopup() {
               <div id="overlay"></div>
           </Link>
           <div id="popup">
+              <div className={"top-left-items"}>
+                  <button onClick={() => setPinned(!item.pinned)}>{item.pinned ? "Unpin" : "Pin"}</button>
+              </div>
               <div className={"top-right-items"}>
                   <Link to={`/edit/${id}`}><button>Edit</button></Link>
                   <button onClick={updateInfo}>Update</button>
@@ -182,9 +189,9 @@ function CardPopup() {
                               }}>
                                   <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
                                   <span>
-                                  <span>{relation.type}</span>
+                                      <span>{relation.type}</span>
                                       {relation.name}
-                              </span>
+                                  </span>
                               </li>
                           ))}
                       </ul>
@@ -203,8 +210,8 @@ function CardPopup() {
                               }}>
                                   <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
                                   <span>
-                              {relation.name}
-                          </span>
+                                      {relation.name}
+                                  </span>
                               </li>
                           ))}
                       </ul>

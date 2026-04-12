@@ -25,7 +25,8 @@ const userDataKeys = [
     "status",
     "timestamp",
     "ownStatus",
-    "filmId"
+    "filmId",
+    "pinned"
 ]
 
 const cacheRenewMinutes = 30;
@@ -94,6 +95,8 @@ export async function getAnimeData(url, userData = {}) {
     const id = getIdFromURL(url);
     if (!isUserDataValid(userData))
         throw "The user data has the wrong format " + userDataKeys;
+    if (!("pinned" in userData))
+        userData.pinned = false;
     if (id in cache && id in cacheTime && (Date.now() - cacheTime[id]) / 60000 < cacheRenewMinutes) {
         let cacheProperties = cache[id];
         if (!Array.isArray(cacheProperties.name))

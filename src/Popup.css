@@ -49,6 +49,13 @@
     gap: 15px;
 }
 
+#popup .top-left-items {
+    display: flex;
+    float: left;
+    margin: 10px;
+    gap: 15px;
+}
+
 #popup img#cover {
     border: 1px solid var(--tab-outline-color);
     border-radius: 10px;
