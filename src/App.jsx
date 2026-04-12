@@ -4,6 +4,7 @@ import AddPopup from "./AddPopup.jsx";
 import CardPopup from "./CardPopup.jsx";
 import EditPopup from "./EditPopup.jsx";
 import ImportPopup from "./ImportPopup.jsx";
+import UpdatesPopup from "./UpdatesPopup.jsx";
 import './App.css';
 import {useContext, useEffect} from "react";
 import {WebsocketContext} from "./WebsocketContext.jsx";
@@ -45,6 +46,10 @@ function App() {
                 {
                     path: "edit/:id",
                     Component: EditPopup
+                },
+                {
+                    path: "updates",
+                    Component: UpdatesPopup
                 }
             ]
         },

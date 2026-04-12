@@ -1,10 +1,10 @@
 import {useContext, useEffect, useState} from "react";
 import {Link} from "react-router";
 import './CardList.css';
-import {websocketToastIfError} from "./ToastUtils.js";
+import {websocketPromiseToast, websocketToastIfError, websocketUpdateCallback} from "./ToastUtils.js";
 import {WebsocketContext} from "./WebsocketContext.jsx";
 
-const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage)=("[^"]*"|[^" ]*)))?)/g;
+const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|pinned)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|pinned)=("[^"]*"|[^" ]*)))?)/g;
 const propertyMap = {
     id: "_id",
     alias: "aliases",
@@ -14,7 +14,7 @@ const propertyMap = {
     subLanguage: "subLanguages"
 };
 
-function CardList() {
+function CardList({ updateListSignal }) {
     const socket = useContext(WebsocketContext);
     const [search, setSearch] = useState("");
     const [filters, setFilters] = useState({
@@ -79,6 +79,21 @@ function CardList() {
         // return (await axiosToastIfError(axios.post("http://localhost:8080/api/get", params))).data;
         return await websocketToastIfError(socket.emitWithAck("get", params));
     }
+
+    useEffect(() => {
+        if (!updateListSignal)
+            return;
+        websocketPromiseToast(
+            new Promise((resolve) => {
+                socket.emit("update", { _id: { $in: tableData.map((item) => item._id) } });
+                socket.once("updateFinished", resolve);
+            }),
+            "Updating Listed",
+            "info",
+            (toastId) => socket.on("updateProgress", websocketUpdateCallback(toastId)),
+            (toastId) => socket.off("updateProgress", websocketUpdateCallback(toastId, true))
+        )
+    }, [updateListSignal]);
 
     useEffect(() => {
         function refreshInfo(refreshData) {

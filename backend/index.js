@@ -112,13 +112,43 @@ async function has(params) {
     }
 }
 
+function getChanges(object1, object2) {
+    const changes = {};
+    for (let key of new Set([...Object.keys(object1), ...Object.keys(object2)])) {
+        if (Array.isArray(object1[key]) && Array.isArray(object2[key])) {
+            changes[key] = {add: [], remove: []};
+            for (const value1 of object2[key]) {
+                if (!object1[key].some((value2) => _.isEqual(value1, value2))) {
+                    changes[key].add.push(value1);
+                }
+            }
+            for (const value1 of object1[key]) {
+                if (!object2[key].some((value2) => _.isEqual(value1, value2))) {
+                    changes[key].remove.push(value1);
+                }
+            }
+            if (!changes[key].add.length && !changes[key].remove.length)
+                delete changes[key];
+            else if (!changes[key].add.length)
+                delete changes[key].add;
+            else if (!changes[key].remove.length)
+                delete changes[key].remove;
+        } else {
+            if (!_.isEqual(object1[key], object2[key])) {
+                changes[key] = {from: object1[key], to: object2[key]};
+            }
+        }
+    }
+    return changes;
+}
+
 let updating = false;
 async function update(params, waitCallback = undefined, updateProgress = undefined) {
     if (updating)
         throw { status: 503, message: "Update is already in process" };
     updating = true;
     try {
-        let updates = {acknowledged: 0, not_acknowledged: 0, number: 0, updates: []};
+        let updates = {acknowledged: 0, not_acknowledged: 0, number: 0, updates: [], differences: {}, names: {}};
         const collection = mongoClient.db("cards_lists").collection("anime");
         const cursor = await collection.find("filter" in params ? params.filter : {});
         const count = await collection.countDocuments("filter" in params ? params.filter : {});
@@ -155,14 +185,23 @@ async function update(params, waitCallback = undefined, updateProgress = undefin
             for (let relation of newData.allRelations) {
                 relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
             }
-            if (!_.isEqual(newData, data)) {
+            if (!_.isEqual({...newData, lastUpdated: 0}, {...data, lastUpdated: 0})) {
                 const result = await collection.replaceOne({_id: data._id}, newData);
                 if (result.acknowledged) {
                     updates.acknowledged++;
                     updates.updates.push(newData);
+                    let difference = getChanges(data, newData);
+                    if ("lastUpdated" in difference)
+                        delete difference.lastUpdated;
+                    if (Object.keys(difference).length) {
+                        updates.differences[newData._id] = difference;
+                        updates.names[newData._id] = newData.name;
+                    }
                 } else {
                     updates.not_acknowledged++;
                 }
+            } else {
+                await collection.updateOne({ _id: data._id }, { $set: {lastUpdated: newData.lastUpdated}}, { upsert: false });
             }
             updates.number++;
         }
@@ -171,12 +210,38 @@ async function update(params, waitCallback = undefined, updateProgress = undefin
             message += ` (${updates.not_acknowledged} entries updatable, but not acknowledged)`;
         }
         wsServer.emit("refresh", updates.updates);
+        if (Object.keys(updates.differences).length)
+            await mongoClient.db("cards_lists").collection("anime_updates").insertOne({
+                time: Date.now(),
+                differences: updates.differences,
+                names: updates.names
+            });
         return message;
     } catch (e) {
         console.error(`Error occurred while trying to update anime data: ${e}`);
         throw { status: 500, message: `Error occurred while trying to update anime data: ${e}` };
     } finally {
         updating = false;
+    }
+}
+
+async function updateHistory(params) {
+    const filter = "filter" in params ? params.filter : {};
+    const options = "options" in params ? params.options : {};
+    const sort = "sort" in params ? params.sort : { time: -1 };
+    const projection = "projection" in params ? params.projection : {};
+    try {
+        const collection = mongoClient.db("cards_lists").collection("anime_updates");
+        const cursor = await collection.find(filter, options)
+            .sort(sort)
+            .project(projection);
+        if ("pageSize" in params && "page" in params) {
+            cursor.skip(params.page * params.pageSize).limit(params.pageSize);
+        }
+        return await cursor.toArray();
+    } catch (e) {
+        console.error(`Error occurred while trying to get anime update history from database: ${e}`);
+        throw { status: 500, message: `Error occurred while trying to get anime update history from database: ${e}` };
     }
 }
 
@@ -286,6 +351,12 @@ wsServer.on("connection", (socket) => {
             }
         );
     });
+    socket.on("updateHistory", (data, callback) => {
+        updateHistory(data ?? {}).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        );
+    })
     socket.on("edit", (data, callback) => {
         edit(data).then(
             (result) => callback(result),

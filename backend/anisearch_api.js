@@ -278,6 +278,8 @@ export async function getAnimeData(url, userData = {}) {
     // }
     // relations, allRelations
     Object.assign(properties, await getRelations(url));
+    // lastUpdated
+    properties.lastUpdated = Date.now();
 
     cache[id] = {...properties};
     cacheTime[id] = Date.now();
