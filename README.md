@@ -1,5 +1,2 @@
-# TODO
-
-- daily "task" that updates animes and lists new relations as notifications on homepage or maybe on a new page
-- make animes pinnable
-- list updates
+## Summary
+A website with backend using React and Express to display and interact with a list of cards. At the moment, the cards can only represent animes by using anisearch to get information on the animes. The backend uses a MongoDB to store information on the cards. I might add more types of cards in the future like books, manga, etc.
