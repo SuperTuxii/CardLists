@@ -5,7 +5,8 @@ const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid, getAnime
 const _ = require('lodash');
 const { setTimeout } = require("node:timers/promises");
 const { createServer } = require("http");
-const {Server} = require("socket.io");
+const { Server } = require("socket.io");
+const cron = require("node-cron");
 
 const app = express();
 const corsOptions = {
@@ -313,6 +314,26 @@ wsServer.on("connection", (socket) => {
         console.log(`User ${socket.id} disconnected. Reason: ${reason}`);
     });
 
+    mongoClient.db("cards_lists").collection("anime")
+        .findOne({}, {sort: {lastUpdated: -1}})
+        .then((data) => {
+            if ((Date.now() - data.lastUpdated) / 86400000 > 7) {
+                console.log("Running auto update all");
+                update({},
+                    (e, updates) => wsServer.emit("updateProgress", `${updates}: ${e}`),
+                    (updateProgress) => wsServer.emit("updateProgress", updateProgress)
+                ).then(
+                    (result) => wsServer.emit("updateFinished", result),
+                    (e) => {
+                        if (e.status === 503 && e.message === "Update is already in process")
+                            socket.emit("updateProgress", e.message);
+                        else
+                            wsServer.emit("updateFinished", e);
+                    }
+                );
+            }
+        });
+
     socket.on("get", (data, callback) => {
         get(data).then(
             (result) => callback(result),
@@ -425,3 +446,17 @@ app.put("/api/add", (req, res) => {
 httpServer.listen(8080, () => {
     console.log("Server started on port 8080");
 });
+
+cron.schedule("0 12 */4 * *", () => {
+    console.log("Running cron auto update all");
+    update({},
+        (e, updates) => wsServer.emit("updateProgress", `${updates}: ${e}`),
+        (updateProgress) => wsServer.emit("updateProgress", updateProgress)
+    ).then(
+        (result) => wsServer.emit("updateFinished", result),
+        (e) => {
+            if (e.status !== 503 || e.message !== "Update is already in process")
+                wsServer.emit("updateFinished", e);
+        }
+    );
+})
