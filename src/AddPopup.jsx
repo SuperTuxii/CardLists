@@ -189,12 +189,12 @@ function AddPopup() {
                         </li>
                     ))}
                 </ul>
-                {Object.entries(recommendations).map(([id, info]) => (
+                {Object.entries(recommendations).map(([, info]) => (
                     <>
-                        <p>{info.series}</p>
+                        <h4>{info.series}</h4>
                         <ul className={"cover-list"}>
                             {info.relations.map(relation => (
-                                <li key={relation.id} onClick={() => setAddUrl(id)}>
+                                <li key={relation.id} onClick={() => setAddUrl(relation.id)}>
                                     <img src={relation.cover} alt={"Cover of an anime that is recommended"}/>
                                     <span>{relation.name}</span>
                                 </li>
