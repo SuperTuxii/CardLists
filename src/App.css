@@ -23,8 +23,16 @@ nav a:hover {
     background-color: #111111;
 }
 
-nav a.right {
-    margin-left: auto;
+nav div {
+    display: flex;
+}
+
+nav .right, nav .left {
+    flex: 1;
+}
+
+nav .right {
+    justify-content: flex-end;
 }
 
 .fill {

@@ -15,7 +15,7 @@ const propertyMap = {
     subLanguage: "subLanguages"
 };
 
-function CardList({ updateListSignal }) {
+function CardList({ updateListSignal, presetFilters }) {
     const socket = useContext(WebsocketContext);
     const [search, setSearch] = useState("");
     const [filters, setFilters] = useState({
@@ -25,7 +25,7 @@ function CardList({ updateListSignal }) {
         ownStatus: []
     });
     const [fullTableData, setFullTableData] = useState([]);
-    const tableData = doFilterAndSearch(fullTableData, search, filters);
+    const tableData = doFilterAndSearch(fullTableData, search, {...filters, ...presetFilters});
     const [cards, setCards] = useState(["aliases", "series", "time", "progress"]);
 
     function doFilterAndSearch(data, search, filters) {
@@ -317,7 +317,7 @@ function CardList({ updateListSignal }) {
                                         <span>
                                             <span className='cards-icon'>Owning</span>
                                             {item.filmId >= 0 ?
-                                                <Link to={`http://192.168.2.1/filme/filme.php?operation=view&pk0=${item.filmId}`}>{`${item.filmId} (${item.ownStatus.charAt(0).toUpperCase() + item.ownStatus.slice(1)})`}</Link>
+                                                <Link to={`http://192.168.2.1/filme/filme.php?operation=view&pk0=${item.filmId}`} target={"_blank"}>{`${item.filmId} (${item.ownStatus.charAt(0).toUpperCase() + item.ownStatus.slice(1)})`}</Link>
                                                 : <>{item.ownStatus.charAt(0).toUpperCase() + item.ownStatus.slice(1)}</>
                                             }
                                         </span>
