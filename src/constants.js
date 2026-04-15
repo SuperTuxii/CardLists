@@ -1,0 +1,1 @@
+export const FALLBACK_COVER_SRC = "https://cdn.anisearch.com/images/anime/cover/0_600.webp";

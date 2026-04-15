@@ -3,6 +3,7 @@ import './Popup.css';
 import {useContext, useEffect, useState} from "react";
 import {websocketFinishToast, websocketToastIfError} from "./ToastUtils.js";
 import {WebsocketContext} from "./WebsocketContext.jsx";
+import {FALLBACK_COVER_SRC} from "./constants.js";
 
 function EditPopup() {
     const { id } = useParams();
@@ -116,7 +117,7 @@ function EditPopup() {
                                 <input className="fill" type={"number"} min={0} defaultValue={data.filmId} name={"filmId"} id={"filmId"}/>
                             </div>
                         </div>
-                        <Link to={"https://www.anisearch.com/anime/" + data._id} target={"_blank"}><img id="cover" src={data.cover} alt={"Cover of the anime to add"} /></Link>
+                        <Link to={"https://www.anisearch.com/anime/" + data._id} target={"_blank"}><img id="cover" src={data.cover} alt={"Cover of the anime to add"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/></Link>
                     </div>
                     <input type="submit" value="Save Changes" id={"submit"} />
                 </form>

@@ -3,6 +3,7 @@ import {Link} from "react-router";
 import './CardList.css';
 import {websocketPromiseToast, websocketToastIfError, websocketUpdateCallback} from "./ToastUtils.js";
 import {WebsocketContext} from "./WebsocketContext.jsx";
+import {FALLBACK_COVER_SRC} from "./constants.js";
 
 const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|pinned)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|pinned)=("[^"]*"|[^" ]*)))?)/g;
 const propertyMap = {
@@ -258,7 +259,7 @@ function CardList({ updateListSignal }) {
                         {tableData.map(item => (
                             <tr key={item._id}>
                                 <td>
-                                    <img src={item.cover} width={100} alt="Card Cover Image" />
+                                    <img src={item.cover} width={100} alt="Card Cover Image" onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                 </td>
                                 <td>
                                     <Link to={"/show/" + item._id}>{item.name}</Link>

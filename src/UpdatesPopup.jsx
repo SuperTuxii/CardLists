@@ -2,6 +2,7 @@ import {Link} from "react-router";
 import {useContext, useEffect, useState} from "react";
 import {websocketToastIfError} from "./ToastUtils.js";
 import {WebsocketContext} from "./WebsocketContext.jsx";
+import {FALLBACK_COVER_SRC} from "./constants.js";
 
 
 function UpdatesPopup() {
@@ -94,7 +95,7 @@ function UpdatesPopup() {
                                                     <ul className={"cover-list"}>
                                                         {differences.relations.add.map(relation => (
                                                             <li key={relation.id}>
-                                                                <img src={relation.cover} alt={"Cover of an anime that has been added"}/>
+                                                                <img src={relation.cover} alt={"Cover of an anime that has been added"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                                                 <span>
                                                                     <span>{relation.type}</span>
                                                                     {relation.name}
@@ -111,7 +112,7 @@ function UpdatesPopup() {
                                                     <ul className={"cover-list"}>
                                                         {differences.relations.remove.map(relation => (
                                                             <li key={relation.id}>
-                                                                <img src={relation.cover} alt={"Cover of an anime that has been removed"}/>
+                                                                <img src={relation.cover} alt={"Cover of an anime that has been removed"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                                                 <span>
                                                                     <span>{relation.type}</span>
                                                                     {relation.name}
@@ -132,7 +133,7 @@ function UpdatesPopup() {
                                                     <ul className={"cover-list"}>
                                                         {differences.allRelations.add.map(relation => (
                                                             <li key={relation.id}>
-                                                                <img src={relation.cover} alt={"Cover of an anime that has been added"}/>
+                                                                <img src={relation.cover} alt={"Cover of an anime that has been added"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                                                 <span>
                                                                     {relation.name}
                                                                 </span>
@@ -148,7 +149,7 @@ function UpdatesPopup() {
                                                     <ul className={"cover-list"}>
                                                         {differences.allRelations.remove.map(relation => (
                                                             <li key={relation.id}>
-                                                                <img src={relation.cover} alt={"Cover of an anime that has been removed"}/>
+                                                                <img src={relation.cover} alt={"Cover of an anime that has been removed"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                                                 <span>
                                                                     {relation.name}
                                                                 </span>

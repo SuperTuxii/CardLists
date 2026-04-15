@@ -3,6 +3,7 @@ import {Link, useParams} from "react-router";
 import './Popup.css';
 import {websocketFinishToast, websocketToastIfError} from "./ToastUtils.js";
 import {WebsocketContext} from "./WebsocketContext.jsx";
+import {FALLBACK_COVER_SRC} from "./constants.js";
 
 function AddPopup() {
     const { id } = useParams();
@@ -170,7 +171,7 @@ function AddPopup() {
                                 <input className="fill" type={"number"} min={0} defaultValue={"filmId" in data ? data.filmId : undefined} name={"filmId"} id={"filmId"}/>
                             </div>
                         </div>
-                        <Link to={"https://www.anisearch.com/anime/" + data._id} target={"_blank"}><img id="cover" src={"cover" in data ? data.cover : undefined} alt={"Cover of the anime to add"} /></Link>
+                        <Link to={"https://www.anisearch.com/anime/" + data._id} target={"_blank"}><img id="cover" src={"cover" in data ? data.cover : undefined} alt={"Cover of the anime to add"}  onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/></Link>
                     </div>
                     <label id={"message"}>{data.fromDB ? "Anime already exists" : ""}</label><br/>
                     <input type="submit" value="Create Anime" disabled={data.fromDB} id={"submit"} />
@@ -181,7 +182,7 @@ function AddPopup() {
                             setAddUrl(relation.id);
                             setRelations(relations.filter(item => item.id !== relation.id));
                         }}>
-                            <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
+                            <img src={relation.cover} alt={"Cover of an anime related to one that has been added"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                             <span>
                                 <span>{relation.type}</span>
                                 {relation.name}
@@ -195,7 +196,7 @@ function AddPopup() {
                         <ul className={"cover-list"}>
                             {info.relations.map(relation => (
                                 <li key={relation.id} onClick={() => setAddUrl(relation.id)}>
-                                    <img src={relation.cover} alt={"Cover of an anime that is recommended"}/>
+                                    <img src={relation.cover} alt={"Cover of an anime that is recommended"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                     <span>{relation.name}</span>
                                 </li>
                             ))}

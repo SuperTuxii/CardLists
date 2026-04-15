@@ -3,6 +3,7 @@ import {Link, useNavigate, useParams} from "react-router";
 import './Popup.css';
 import {websocketPromiseToast, websocketToastIfError, websocketUpdateCallback} from "./ToastUtils.js";
 import {WebsocketContext} from "./WebsocketContext.jsx";
+import {FALLBACK_COVER_SRC} from "./constants.js";
 
 
 function CardPopup() {
@@ -174,7 +175,7 @@ function CardPopup() {
                           :<></>
                       }
                   </div>
-                  <Link to={"https://www.anisearch.com/anime/" + item._id} target={"_blank"}><img id="cover" src={item.cover} alt="Card Cover Image" /></Link>
+                  <Link to={"https://www.anisearch.com/anime/" + item._id} target={"_blank"}><img id="cover" src={item.cover} alt="Card Cover Image" onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/></Link>
               </div>
               {item.relations && item.relations.length ?
                   <>
@@ -187,7 +188,7 @@ function CardPopup() {
                                    else
                                        navigate(`/add/${relation.id}`);
                               }}>
-                                  <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
+                                  <img src={relation.cover} alt={"Cover of an anime related to one that has been added"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                   <span>
                                       <span>{relation.type}</span>
                                       {relation.name}
@@ -208,7 +209,7 @@ function CardPopup() {
                                   else
                                       navigate(`/add/${relation.id}`);
                               }}>
-                                  <img src={relation.cover} alt={"Cover of an anime related to one that has been added"}/>
+                                  <img src={relation.cover} alt={"Cover of an anime related to one that has been added"} onError={(e) => e.currentTarget.src = FALLBACK_COVER_SRC}/>
                                   <span>
                                       {relation.name}
                                   </span>
