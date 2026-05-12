@@ -8,9 +8,12 @@ import {FALLBACK_COVER_SRC} from "./constants.js";
 function AddPopup() {
     const { id } = useParams();
     const socket = useContext(WebsocketContext);
+    const [search, setSearch] = useState("");
+    const [searchPage, setSearchPage] = useState(0);
     const [addUrl, setAddUrl] = useState("");
     const [relations, setRelations] = useState([]);
     const [recommendations, setRecommendations] = useState({});
+    const [searchData, setSearchData] = useState({});
     const [data, setData] = useState({});
 
     async function getAPI(url) {
@@ -33,6 +36,23 @@ function AddPopup() {
         }
         document.getElementById("status").dispatchEvent(new Event("change", { bubbles: true }))
         document.getElementById("ownStatus").dispatchEvent(new Event("change", { bubbles: true }))
+    }
+
+    async function searchAPI(term, page = 0) {
+        // const response = (await axiosToastIfError(axios.get("http://localhost:8080/api/search", { params: { term: term, page: page }}))).data;
+        const response = await websocketToastIfError(socket.emitWithAck("search", { term: term, page: page }));
+        return response.r ? Object.fromEntries(response.r.map((data) => {
+            if (data.v.startsWith("<span>")) {
+                return [data.v.replaceAll(/<\/?strong>/g, "").replace(/^<span>(.*)<\/span>.*$/, "$1"), data];
+            } else if (data.t.startsWith("<span class=\"dd-more\">") || data.t.startsWith("<span class=\"dd-none\">")) {
+                return [data.t.replace(/^<span class=".*">(.*)<\/span>$/, "$1"), data]
+            } else if (data.t.startsWith("<span class=\"dd-all\">")) {
+                data.t = "<span class=\"dd-more\">";
+                return ["Show more results (" + searchPage +"/?)", data];
+            } else {
+                return [data.t, data];
+            }
+        })) : undefined;
     }
 
     async function addAPI() {
@@ -71,16 +91,40 @@ function AddPopup() {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            document.querySelector("#popup input").value = addUrl;
+            document.querySelector("#popup input#url").value = addUrl;
             document.getElementById("animeInfo").reset();
             if (addUrl) {
                 getAPI(addUrl);
             } else {
                 setData({});
             }
-        }, addUrl === id && !document.querySelector("#popup input").value ? 0 : 500);
+        }, addUrl === id && !document.querySelector("#popup input#url").value ? 0 : 500);
         return () => clearTimeout(timer);
     }, [addUrl]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search) {
+                if (searchPage === 0)
+                    searchAPI(search, searchPage).then((data) => {
+                        if (data)
+                            setSearchData(data);
+                    });
+                setSearchPage(0);
+            } else {
+                setSearchData({});
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        if (search)
+            searchAPI(search, searchPage).then((data) => {
+                if (data)
+                    setSearchData(data);
+            });
+    }, [searchPage]);
 
     return (
         <>
@@ -97,8 +141,23 @@ function AddPopup() {
                     }}>Recommendations</button>
                 </div>
                 <h2>Add Anime</h2>
-                <p>Anisearch URL:</p>
-                <input className="fill" onChange={e => setAddUrl(e.target.value)}></input>
+                <div onFocus={() => document.querySelector("#searchDropdown").style.display = "grid"}
+                     onBlur={() => document.querySelector("#searchDropdown").style.display = "none"}>
+                    <input className="fill" id={"search"} placeholder={"Search"} onChange={e => setSearch(e.target.value)}/>
+                    <div id={"searchDropdown"} tabIndex={-1}>
+                        {Object.entries(searchData).map(([title, data]) => (
+                            <label key={data.i} onClick={(() => {
+                                if (data.i) {
+                                    setAddUrl(data.i);
+                                    document.querySelector("#searchDropdown").style.display = "none";
+                                } else if (data.t.startsWith("<span class=\"dd-more\">")) {
+                                    setSearchPage(searchPage+1)
+                                }
+                            })}>{title}</label>
+                        ))}
+                    </div>
+                </div>
+                <input className="fill" id={"url"} placeholder={"Anisearch URL"} onChange={e => setAddUrl(e.target.value)}></input>
                 <form id="animeInfo" style={Object.keys(data).length ? {display: "block"} : {display: "none"}} onSubmit={(e) => {
                     e.preventDefault();
                     document.getElementById("timestamp").disabled = false;

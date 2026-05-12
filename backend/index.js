@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
-const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid, getAnimeData} = require("./anisearch_api");
+const {getAnisearchURL, getIdFromURL, updateAnimeData, isUserDataValid, getAnimeData, doSearch} = require("./anisearch_api");
 const _ = require('lodash');
 const { setTimeout } = require("node:timers/promises");
 const { createServer } = require("http");
@@ -308,6 +308,24 @@ async function add(params) {
     }
 }
 
+async function search(params) {
+    if ("term" in params) {
+        const page = "page" in params ? params.page : 0;
+        try {
+            return await doSearch(params.term, page);
+        } catch (e) {
+            if ("status" in e && "message" in e)
+                throw e;
+            if (e.startsWith("Too Many Requests"))
+                throw { status: 429, message: e };
+            console.error(`Error occurred while trying to search for anime ${params.term}: ${e}`);
+            throw { status: 500, message: `Error occurred while trying to search for anime ${params.term}: ${e}` };
+        }
+    } else {
+        throw { status: 400, message: "Incorrect search parameters" };
+    }
+}
+
 wsServer.on("connection", (socket) => {
     console.log("User connected: ", socket.id);
     socket.on("disconnect", (reason) => {
@@ -390,6 +408,12 @@ wsServer.on("connection", (socket) => {
             (e) => callback(e)
         );
     });
+    socket.on("search", (data, callback) => {
+        search(data).then(
+            (result) => callback(result),
+            (e) => callback(e)
+        )
+    })
 });
 
 app.get("/api/get", (req, res) => {
@@ -434,7 +458,14 @@ app.post("/api/edit", (req, res) => {
         (result) => res.status(200).send(result),
         (e) => res.status(e.status).send(e.message)
     );
-})
+});
+
+app.post("/api/search", (req, res) => {
+    search(req.body).then(
+        (result) => res.status(200).send(result),
+        (e) => res.status(e.status).send(e.message)
+    )
+});
 
 app.put("/api/add", (req, res) => {
     add(req.body).then(

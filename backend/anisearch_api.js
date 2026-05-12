@@ -1,4 +1,7 @@
-import { JSDOM } from "jsdom";
+import {CookieJar, JSDOM} from "jsdom";
+import axios from "axios";
+
+axios.defaults.headers.common["User-Agent"] = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0";
 
 const generalUrlRegex = /^https:\/\/www\.anisearch\.[^/]+\/anime\/(\d+),?([^/]*)?$/
 const strictUrlRegex = /^https:\/\/www\.anisearch\.com\/anime\/(\d+),?([^/]*)?$/
@@ -29,6 +32,8 @@ const userDataKeys = [
     "pinned"
 ]
 
+const cookieJar = new CookieJar();
+let ajax_token = undefined;
 const cacheRenewMinutes = 30;
 const requestPerMinuteMax = 25;
 let cache = {};
@@ -47,6 +52,42 @@ function isRequestable() {
     } else {
         requestCounter.latestTime = currentTime;
         requestCounter.amount++;
+    }
+}
+
+async function fillCookieJar() {
+    isRequestable();
+    try {
+        let dom = await JSDOM.fromURL("https://www.anisearch.com/anime/17452,oshi-no-ko", { cookieJar });
+        ajax_token = dom.window.document.querySelector("#footer").getAttribute("data-token");
+    } catch (e) {
+        throw `Error while trying to get website to get search tokens: ${e}`;
+    }
+}
+
+export async function doSearch(term, page = 0) {
+    if (!ajax_token)
+        await fillCookieJar()
+    try {
+        isRequestable();
+        const formData = new FormData;
+        formData.append("v", ajax_token); // Token
+        formData.append("q", true); // IDK, but it's true
+        formData.append("p", page); // Page
+        formData.append("t", term); // Search term
+        const response = await axios.post(
+            "https://www.anisearch.com/ajax/search/anime",
+            formData,
+            {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Cookie": cookieJar.store.idx["anisearch.com"]["/"].session_database.toString().replace(/^Cookie=".*(session_database=.*);.*"$/, "$1")
+                }
+            }
+        );
+        return response.data;
+    } catch (e) {
+        throw `Error while trying to get website: ${e}`;
     }
 }
 
