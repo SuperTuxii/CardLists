@@ -5,14 +5,16 @@ import {websocketPromiseToast, websocketToastIfError, websocketUpdateCallback} f
 import {WebsocketContext} from "./WebsocketContext.jsx";
 import {FALLBACK_COVER_SRC} from "./constants.js";
 
-const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|pinned)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|pinned)=("[^"]*"|[^" ]*)))?)/g;
+const propertySpecifierRegex = /(?:^| )(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|tag|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|stream|pinned)=("[^"]*"|[^" ]*)(?:$|(?: (?!(id|name|alias|series|seriesPart|season|status|timestamp|ownStatus|filmId|timePerUnit|totalTime|started|finished|genre|tag|studio|staff|volumeEstimated|volume|units|publishStatus|broadcast|language|dubLanguage|subLanguage|stream|pinned)=("[^"]*"|[^" ]*)))?)/g;
 const propertyMap = {
     id: "_id",
     alias: "aliases",
     genre: "genres",
+    tag: "tags",
     language: "languages",
     dubLanguage: "dubLanguages",
-    subLanguage: "subLanguages"
+    subLanguage: "subLanguages",
+    stream: "streams"
 };
 
 function CardList({ updateListSignal, presetFilters }) {
@@ -51,10 +53,16 @@ function CardList({ updateListSignal, presetFilters }) {
                         if (Array.isArray(data[property])) {
                             if (data[property].length === 0)
                                 return false;
-                            if (typeof data[property][0] === "string" && !data[property].some(s => specifier.test(s)))
-                                return false;
-                            else if (typeof data[property][0] === "object" && !data[property].some(o => specifier.test(o.name)))
-                                return false;
+                            if (typeof data[property][0] === "string")
+                                return data[property].some(s => specifier.test(s));
+                            else if (typeof data[property][0] === "object") {
+                                if ("name" in data[property][0])
+                                    return data[property].some(o => specifier.test(o.name))
+                                else if ("link" in data[property][0])
+                                    return data[property].some(o => specifier.test(o.link))
+                                else
+                                    return false;
+                            }
                         } else if (!specifier.test(data[property])) {
                             return false;
                         }
@@ -155,6 +163,7 @@ function CardList({ updateListSignal, presetFilters }) {
                             <label><input type={"checkbox"} name={"series"} defaultChecked={true} />Series</label>
                             <label><input type={"checkbox"} name={"part"} />Part</label>
                             <label><input type={"checkbox"} name={"genres"} />Genres</label>
+                            <label><input type={"checkbox"} name={"tags"} />Tags</label>
                             <label><input type={"checkbox"} name={"status"} />Status</label>
                             <label><input type={"checkbox"} name={"publishStatus"} />Publish Status</label>
                             <label><input type={"checkbox"} name={"owning"} />Owning</label>
@@ -164,6 +173,7 @@ function CardList({ updateListSignal, presetFilters }) {
                             <label><input type={"checkbox"} name={"languages"} />Languages</label>
                             <label><input type={"checkbox"} name={"subLanguages"} />Sub Languages</label>
                             <label><input type={"checkbox"} name={"dubLanguages"} />Dub Languages</label>
+                            <label><input type={"checkbox"} name={"streams"} />Streams</label>
                             <label><input type={"checkbox"} name={"broadcast"} />Broadcast</label>
                             <label><input type={"checkbox"} name={"time"} defaultChecked={true} />Time</label>
                             <label><input type={"checkbox"} name={"progress"} defaultChecked={true} />Progress</label>
@@ -187,6 +197,7 @@ function CardList({ updateListSignal, presetFilters }) {
                                     <label><input type={"checkbox"} name={"aliases"} />Aliases</label>
                                     <label><input type={"checkbox"} name={"series"} />Series</label>
                                     <label><input type={"checkbox"} name={"genres"} />Genres</label>
+                                    <label><input type={"checkbox"} name={"tags"} />Tags</label>
                                     <label><input type={"checkbox"} name={"studio"} />Studio</label>
                                     <label><input type={"checkbox"} name={"staff"} />Staff</label>
                                     <label><input type={"checkbox"} name={"_id"} />ID</label>
@@ -296,6 +307,14 @@ function CardList({ updateListSignal, presetFilters }) {
                                         </span>
                                     </td> : <></>
                                 }
+                                {cards.includes("tags") ?
+                                    <td>
+                                        <span>
+                                            <span className='cards-icon'>Tags</span>
+                                            {(item.tags ?? []).join(", ")}
+                                        </span>
+                                    </td> : <></>
+                                }
                                 {cards.includes("status") ?
                                     <td>
                                         <span>
@@ -351,7 +370,7 @@ function CardList({ updateListSignal, presetFilters }) {
                                     <td>
                                         <span className={"language-images"}>
                                             <span className='cards-icon'>Languages</span>
-                                            {item.languages.map((language, index) => <img className={"flag"} key={index} src={language.image} width={100} alt={`Language ${language.name} Image`} />)}
+                                            {item.languages.map((language, index) => <img className={"flag"} key={index} src={language.image} alt={`Language ${language.name} Image`} />)}
                                         </span>
                                     </td> : <></>
                                 }
@@ -359,7 +378,7 @@ function CardList({ updateListSignal, presetFilters }) {
                                     <td>
                                         <span className={"language-images"}>
                                             <span className='cards-icon'>Sub Languages</span>
-                                            {item.subLanguages.map((language, index) => <img className={"flag"} key={index} src={language.image} width={100} alt={`Language ${language.name} Image`} />)}
+                                            {item.subLanguages.map((language, index) => <img className={"flag"} key={index} src={language.image} alt={`Language ${language.name} Image`} />)}
                                         </span>
                                     </td> : <></>
                                 }
@@ -367,7 +386,15 @@ function CardList({ updateListSignal, presetFilters }) {
                                     <td>
                                         <span className={"language-images"}>
                                             <span className='cards-icon'>Dub Languages</span>
-                                            {item.dubLanguages.map((language, index) => <img className={"flag"} key={index} src={language.image} width={100} alt={`Language ${language.name} Image`} />)}
+                                            {item.dubLanguages.map((language, index) => <img className={"flag"} key={index} src={language.image} alt={`Language ${language.name} Image`} />)}
+                                        </span>
+                                    </td> : <></>
+                                }
+                                {cards.includes("streams") ?
+                                    <td>
+                                        <span className={"language-images"}>
+                                            <span className='cards-icon'>Streams</span>
+                                            {(item.streams ?? []).map((stream, index) => <Link to={stream.link} target={"_blank"}><img className={"stream-small"} key={index} src={stream.cover} alt={`Streaming Platform Cover Image`} /></Link>)}
                                         </span>
                                     </td> : <></>
                                 }

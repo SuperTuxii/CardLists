@@ -32,7 +32,7 @@ const userDataKeys = [
     "pinned"
 ]
 
-const cookieJar = new CookieJar();
+let cookieJar = new CookieJar();
 let ajax_token = undefined;
 const cacheRenewMinutes = 30;
 const requestPerMinuteMax = 25;
@@ -56,35 +56,40 @@ function isRequestable() {
 }
 
 async function fillCookieJar() {
-    isRequestable();
-    try {
-        let dom = await JSDOM.fromURL("https://www.anisearch.com/anime/17452,oshi-no-ko", { cookieJar });
-        ajax_token = dom.window.document.querySelector("#footer").getAttribute("data-token");
-    } catch (e) {
-        throw `Error while trying to get website to get search tokens: ${e}`;
+    if (!cookieJar?.store?.idx?.["anisearch.com"]?.["/"]?.session_database ||
+        new Date(cookieJar?.store?.idx?.["anisearch.com"]?.["/"]?.session_database.toString().replace(/^.*Expires=([^;]*);.*$/, "$1")).getTime() <= Date.now()) {
+        isRequestable();
+        try {
+            let dom = await JSDOM.fromURL("https://www.anisearch.com/anime/17452,oshi-no-ko", { cookieJar });
+            ajax_token = dom.window.document.querySelector("#footer").getAttribute("data-token");
+        } catch (e) {
+            throw `Error while trying to get website to get search tokens: ${e}`;
+        }
     }
 }
 
 export async function doSearch(term, page = 0) {
-    if (!ajax_token)
-        await fillCookieJar()
+    await fillCookieJar();
     try {
         isRequestable();
         const formData = new FormData;
         formData.append("v", ajax_token); // Token
         formData.append("q", true); // IDK, but it's true
-        formData.append("p", page); // Page
+        formData.append("p", page); // Pages
         formData.append("t", term); // Search term
-        const response = await axios.post(
+        let response = await axios.post(
             "https://www.anisearch.com/ajax/search/anime",
             formData,
             {
+                timeout: 500,
                 headers: {
                     "X-Requested-With": "XMLHttpRequest",
-                    "Cookie": cookieJar.store.idx["anisearch.com"]["/"].session_database.toString().replace(/^Cookie=".*(session_database=.*);.*"$/, "$1")
+                    "Cookie": cookieJar.store.idx["anisearch.com"]["/"].session_database.toString().replace(/^.*(session_database=[^;]*);.*$/, "$1")
                 }
             }
         );
+        if (typeof response.data === "string")
+            throw response.data;
         return response.data;
     } catch (e) {
         throw `Error while trying to get website: ${e}`;
@@ -223,6 +228,16 @@ export async function getAnimeData(url, userData = {}) {
     } else {
         properties.genres = ["?"];
     }
+    // tags
+    let tagsList = document.querySelectorAll("section#genres-tags ul.cloud>li>a.gt");
+    if (tagsList.length !== 0) {
+        properties.tags = [];
+        for (const tag of tagsList) {
+            properties.tags.push(tag.innerHTML);
+        }
+    } else {
+        properties.tags = ["?"];
+    }
     // studio
     let companyDiv = informationList.children[0].querySelector("div.company");
     if (companyDiv) {
@@ -309,6 +324,19 @@ export async function getAnimeData(url, userData = {}) {
         }
     }
     properties.aliases = [...new Set(properties.aliases)];
+    // streams
+    let streamsList = document.querySelectorAll("section#streams ul>li>a");
+    if (streamsList.length !== 0) {
+        properties.streams = [];
+        for (const streamElement of streamsList) {
+            properties.streams.push({
+                link: streamElement.getAttribute("href").replace(/tag=anisearch\.usa-20/, ""),
+                cover: streamElement.querySelector("img.o-cover").getAttribute("src")
+            });
+        }
+    } else {
+        properties.streams = ["?"];
+    }
     // cover
     properties.cover = "https://cdn.anisearch.com/images/anime/cover/" + Math.floor(properties._id / 1000) + "/" + properties._id + "_600.webp"
     // if ("image" in scriptJson) {

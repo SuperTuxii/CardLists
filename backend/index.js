@@ -296,9 +296,9 @@ async function add(params) {
                 throw "Insertion was not acknowledged";
             }
         } catch (e) {
-            if ("status" in e && "message" in e)
+            if (typeof e === "object" && "status" in e && "message" in e)
                 throw e;
-            if (e.startsWith("Too Many Requests"))
+            if (typeof e === "string" && e.startsWith("Too Many Requests"))
                 throw { status: 429, message: e };
             console.error(`Error occurred while trying to add anime ${params.url}: ${e}`);
             throw { status: 500, message: `Error occurred while trying to add anime ${params.url}: ${e}` };
@@ -314,9 +314,9 @@ async function search(params) {
         try {
             return await doSearch(params.term, page);
         } catch (e) {
-            if ("status" in e && "message" in e)
+            if (typeof e === "object" && "status" in e && "message" in e)
                 throw e;
-            if (e.startsWith("Too Many Requests"))
+            if (typeof e === "string" && e.startsWith("Too Many Requests"))
                 throw { status: 429, message: e };
             console.error(`Error occurred while trying to search for anime ${params.term}: ${e}`);
             throw { status: 500, message: `Error occurred while trying to search for anime ${params.term}: ${e}` };

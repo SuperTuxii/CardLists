@@ -119,6 +119,10 @@ function CardPopup() {
                           <label>{(item.genres ?? []).join(", ")}</label>
                       </div>
                       <div className="row">
+                          <label>Tags</label>
+                          <label>{(item.tags ?? []).join(", ")}</label>
+                      </div>
+                      <div className="row">
                           <label>Studio</label>
                           <ul>
                               {
@@ -169,6 +173,17 @@ function CardPopup() {
                               <div>
                                   {
                                       item.subLanguages.map((item, index) => <img className={"flag"} key={index} src={item.image} alt={`Language ${item.name} Image`} />)
+                                  }
+                              </div>
+                          </div>
+                          :<></>
+                      }
+                      {item.streams && item.streams.length ?
+                          <div className="row">
+                              <label>Streams</label>
+                              <div>
+                                  {
+                                      item.streams.map((item, index) => <Link to={item.link} target={"_blank"}><img className={"stream"} key={index} src={item.cover} alt={`Streaming Platform Cover Image`} /></Link>)
                                   }
                               </div>
                           </div>
