@@ -89,7 +89,26 @@ async function get(params) {
             if ("pageSize" in params && "page" in params) {
                 cursor.skip(params.page * params.pageSize).limit(params.pageSize);
             }
-            return await cursor.toArray();
+            const result = await cursor.toArray();
+            if (params.resolveRelations) {
+                for (const data of result) {
+                    let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
+                        .sort({_id: 1})
+                        .project({_id: true})
+                        .toArray();
+                    for (let relation of data.relations) {
+                        relation.inDB = relations.some(relation2 => relation.id === relation2._id);
+                    }
+                    let allRelations = await collection.find({_id: {$in: data.allRelations.map(relation => relation.id)}})
+                        .sort({_id: 1})
+                        .project({_id: true})
+                        .toArray();
+                    for (let relation of data.allRelations) {
+                        relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
+                    }
+                }
+            }
+            return result;
         } catch (e) {
             console.error(`Error occurred while trying to get anime data from database: ${e}`);
             throw { status: 500, message: `Error occurred while trying to get anime data from database: ${e}` };
@@ -171,20 +190,6 @@ async function update(params, waitCallback = undefined, updateProgress = undefin
                         waitCallback(e, `${updates.number}/${count}`);
                     await setTimeout(15000);
                 }
-            }
-            let relations = await collection.find({_id: {$in: newData.relations.map(relation => relation.id)}})
-                .sort({_id: 1})
-                .project({_id: true})
-                .toArray();
-            for (let relation of newData.relations) {
-                relation.inDB = relations.some(relation2 => relation.id === relation2._id);
-            }
-            let allRelations = await collection.find({_id: {$in: newData.allRelations.map(relation => relation.id)}})
-                .sort({_id: 1})
-                .project({_id: true})
-                .toArray();
-            for (let relation of newData.allRelations) {
-                relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
             }
             if (!_.isEqual({...newData, lastUpdated: 0}, {...data, lastUpdated: 0})) {
                 const result = await collection.replaceOne({_id: data._id}, newData);
@@ -274,20 +279,6 @@ async function add(params) {
                 throw { status: 409, message: "Anime Data already exists" };
             }
             const data = await getAnimeData(params.url, params.data);
-            let relations = await collection.find({_id: {$in: data.relations.map(relation => relation.id)}})
-                .sort({_id: 1})
-                .project({_id: true, series: true, seriesPart: true, season: true})
-                .toArray();
-            for (let relation of data.relations) {
-                relation.inDB = relations.some(relation2 => relation.id === relation2._id);
-            }
-            let allRelations = await collection.find({_id: {$in: data.allRelations.map(relation => relation.id)}})
-                .sort({_id: 1})
-                .project({_id: true, series: true, seriesPart: true, season: true})
-                .toArray();
-            for (let relation of data.allRelations) {
-                relation.inDB = allRelations.some(relation2 => relation.id === relation2._id);
-            }
             const result = await collection.insertOne(data);
             if (result.acknowledged) {
                 wsServer.emit("refresh", [data]);
@@ -365,7 +356,7 @@ wsServer.on("connection", (socket) => {
         );
     });
     socket.on("get-db", (data, callback) => {
-        get({ filter: {_id: getIdFromURL(data)} }).then(
+        get({ filter: {_id: getIdFromURL(data)}, resolveRelations: true }).then(
             (result) => callback(result[0]),
             (e) => callback(e)
         );

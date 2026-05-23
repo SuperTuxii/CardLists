@@ -53,14 +53,12 @@ function CardList({ updateListSignal, presetFilters }) {
                         if (Array.isArray(data[property])) {
                             if (data[property].length === 0)
                                 return false;
-                            if (typeof data[property][0] === "string")
-                                return data[property].some(s => specifier.test(s));
+                            if (typeof data[property][0] === "string" && !data[property].some(s => specifier.test(s)))
+                                return false;
                             else if (typeof data[property][0] === "object") {
-                                if ("name" in data[property][0])
-                                    return data[property].some(o => specifier.test(o.name))
-                                else if ("link" in data[property][0])
-                                    return data[property].some(o => specifier.test(o.link))
-                                else
+                                if ("name" in data[property][0] && !data[property].some(o => specifier.test(o.name)))
+                                    return false;
+                                else if ("link" in data[property][0] && !data[property].some(o => specifier.test(o.link)))
                                     return false;
                             }
                         } else if (!specifier.test(data[property])) {

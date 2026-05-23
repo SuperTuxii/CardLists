@@ -233,7 +233,7 @@ export async function getAnimeData(url, userData = {}) {
     if (tagsList.length !== 0) {
         properties.tags = [];
         for (const tag of tagsList) {
-            properties.tags.push(tag.innerHTML);
+            properties.tags.push(tag.textContent);
         }
     } else {
         properties.tags = ["?"];
@@ -326,16 +326,12 @@ export async function getAnimeData(url, userData = {}) {
     properties.aliases = [...new Set(properties.aliases)];
     // streams
     let streamsList = document.querySelectorAll("section#streams ul>li>a");
-    if (streamsList.length !== 0) {
-        properties.streams = [];
-        for (const streamElement of streamsList) {
-            properties.streams.push({
-                link: streamElement.getAttribute("href").replace(/tag=anisearch\.usa-20/, ""),
-                cover: streamElement.querySelector("img.o-cover").getAttribute("src")
-            });
-        }
-    } else {
-        properties.streams = ["?"];
+    properties.streams = [];
+    for (const streamElement of streamsList) {
+        properties.streams.push({
+            link: streamElement.getAttribute("href").replace(/tag=anisearch\.usa-20/, ""),
+            cover: streamElement.querySelector("img.o-cover").getAttribute("src")
+        });
     }
     // cover
     properties.cover = "https://cdn.anisearch.com/images/anime/cover/" + Math.floor(properties._id / 1000) + "/" + properties._id + "_600.webp"
