@@ -309,7 +309,7 @@ export async function getAnimeData(url, userData = {}) {
         }
         let titleTag = titleDiv.querySelector("strong.f16");
         if (titleTag) {
-            properties.aliases.push(titleTag.innerHTML);
+            properties.aliases.push(titleTag.textContent);
         }
         let languageData = {
             name: language,
